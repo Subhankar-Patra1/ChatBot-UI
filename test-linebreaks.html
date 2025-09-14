@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Line Break Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { max-width: 600px; margin: 0 auto; }
+        .message { background: #8b5cf6; color: white; padding: 15px; border-radius: 12px; margin: 10px 0; }
+        .original { background: #ef4444; }
+        .fixed { background: #10b981; }
+        h3 { margin-top: 30px; }
+        code { background: #f3f4f6; padding: 2px 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Line Break Fix Test</h1>
+        
+        <h3>✅ What was Fixed:</h3>
+        <p>When users press <code>Shift+Enter</code> in the textarea to create new lines, those line breaks should be preserved when the message is displayed in the chat.</p>
+        
+        <h3>❌ Before (Problem):</h3>
+        <div class="message original">
+            <p>Line 1 Line 2 Line 3</p>
+            <small>All text appears on same line despite using Shift+Enter</small>
+        </div>
+        
+        <h3>✅ After (Fixed):</h3>
+        <div class="message fixed">
+            <p style="white-space: pre-wrap;">Line 1<br>Line 2<br>Line 3</p>
+            <small>Line breaks are preserved properly</small>
+        </div>
+        
+        <h3>🛠️ Technical Solution:</h3>
+        <ul>
+            <li><strong>Convert newlines:</strong> <code>message.replace(/\n/g, '&lt;br&gt;')</code></li>
+            <li><strong>Preserve whitespace:</strong> <code>white-space: pre-wrap</code> CSS</li>
+            <li><strong>Applied to:</strong> User messages, AI responses, welcome messages</li>
+        </ul>
+        
+        <h3>📝 How to Test:</h3>
+        <ol>
+            <li>Open the main chatbot application</li>
+            <li>Type a message in the text field</li>
+            <li>Press <code>Shift+Enter</code> to create a new line</li>
+            <li>Type more text on the new line</li>
+            <li>Press <code>Enter</code> to send</li>
+            <li>Verify that line breaks are preserved in the displayed message</li>
+        </ol>
+        
+        <h3>🎯 Expected Behavior:</h3>
+        <div class="message fixed">
+            <p style="white-space: pre-wrap;">First line of my message<br>Second line with important details<br>Third line with conclusion</p>
+            <small>Each line should appear separately as typed</small>
+        </div>
+    </div>
+</body>
+</html>

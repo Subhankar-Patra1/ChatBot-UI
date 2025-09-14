@@ -511,10 +511,12 @@ button:hover {
   flex-wrap: wrap;
   gap: var(--spacing-2);
   margin-top: var(--spacing-4);
+  padding-left: 3.5rem; /* equivalent to px-14 */
   animation: fadeInUp var(--duration-normal) ease-out;
 }
 
 .quick-reply-btn {
+  display: inline-block;
   padding: var(--spacing-2) var(--spacing-4);
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.3);
@@ -523,6 +525,8 @@ button:hover {
   cursor: pointer;
   transition: all var(--duration-fast) ease;
   color: var(--accent-color);
+  margin: 0;
+  white-space: nowrap;
 }
 
 .quick-reply-btn:hover {
