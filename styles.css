@@ -759,7 +759,7 @@ button:hover {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-3) var(--spacing-3);
-  margin: 0 0 var(--spacing-1) 0 !important;
+  margin: 0 0 var(--spacing-2) 0 !important;
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--duration-fast) ease;
@@ -778,21 +778,39 @@ button:hover {
 }
 
 .chat-history-item:hover {
-  background: rgba(139, 92, 246, 0.1) !important;
+  background: rgba(139, 92, 246, 0.08) !important;
   border-radius: var(--radius-lg);
+}
+
+.chat-history-item:hover .chat-title {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.dark .chat-history-item:hover .chat-title {
+  color: white;
 }
 
 .chat-history-item.active {
-  background: rgba(139, 92, 246, 0.15) !important;
+  background: rgba(139, 92, 246, 0.12) !important;
   border-radius: var(--radius-lg);
 }
 
+.chat-history-item.active .chat-title {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.dark .chat-history-item.active .chat-title {
+  color: white;
+}
+
 .dark .chat-history-item:hover {
-  background: rgba(139, 92, 246, 0.1) !important;
+  background: rgba(139, 92, 246, 0.08) !important;
 }
 
 .dark .chat-history-item.active {
-  background: rgba(139, 92, 246, 0.15) !important;
+  background: rgba(139, 92, 246, 0.12) !important;
 }
 
 .chat-history-item.active::before {
@@ -821,6 +839,11 @@ button:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   letter-spacing: -0.01em;
+  opacity: 1;
+}
+
+.dark .chat-title {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .chat-time {
@@ -829,6 +852,10 @@ button:hover {
   line-height: 1.2;
   font-weight: 400;
   opacity: 0.8;
+}
+
+.dark .chat-time {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .chat-actions {
