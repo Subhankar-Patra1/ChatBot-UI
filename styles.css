@@ -509,28 +509,28 @@ button:hover {
 .quick-replies {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-2);
-  margin-top: var(--spacing-4);
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
   padding-left: 3.5rem; /* equivalent to px-14 */
   animation: fadeInUp var(--duration-normal) ease-out;
 }
 
 .quick-reply-btn {
   display: inline-block;
-  padding: var(--spacing-2) var(--spacing-4);
+  padding: var(--spacing-sm) var(--spacing-md);
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: var(--border-radius-xl);
-  font-size: var(--text-sm);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-sm);
   cursor: pointer;
   transition: all var(--duration-fast) ease;
-  color: var(--accent-color);
+  color: var(--primary-accent);
   margin: 0;
   white-space: nowrap;
 }
 
 .quick-reply-btn:hover {
-  background: var(--accent-color);
+  background: var(--primary-accent);
   color: white;
   transform: translateY(-1px);
 }

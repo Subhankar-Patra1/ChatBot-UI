@@ -469,12 +469,10 @@ const addAIResponse = (userMessage) => {
     chatContainer.appendChild(aiMessage);
     
     if (quickReplies.length > 0) {
-        console.log('Creating quick replies:', quickReplies);
         const quickReplyContainer = document.createElement('div');
         quickReplyContainer.className = 'quick-replies';
         
-        quickReplies.forEach((reply, index) => {
-            console.log(`Creating button ${index}:`, reply);
+        quickReplies.forEach(reply => {
             const button = document.createElement('button');
             button.className = 'quick-reply-btn';
             button.textContent = reply;
@@ -482,7 +480,6 @@ const addAIResponse = (userMessage) => {
             quickReplyContainer.appendChild(button);
         });
         
-        console.log('Quick reply container:', quickReplyContainer);
         chatContainer.appendChild(quickReplyContainer);
     }
     
