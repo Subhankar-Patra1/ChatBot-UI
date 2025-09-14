@@ -425,15 +425,15 @@ button:hover {
 .typing-indicator {
   display: flex;
   align-items: center;
-  gap: var(--spacing-1);
-  padding: var(--spacing-3) var(--spacing-4);
+  gap: 4px;
+  padding: 12px 16px;
 }
 
 .typing-dot {
-  width: var(--spacing-1-5);
-  height: var(--spacing-1-5);
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background-color: var(--accent-color);
+  background-color: var(--primary-accent);
   animation: typingBounce 1.4s infinite ease-in-out;
 }
 
@@ -464,7 +464,7 @@ button:hover {
 @keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(var(--spacing-5));
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -538,7 +538,7 @@ button:hover {
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(var(--spacing-2-5));
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
