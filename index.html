@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chatbot UI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body class="bg-gray-100 dark:bg-[var(--bg-primary)] transition-colors duration-300">
+<!-- Mobile overlay -->
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileSidebar()"></div>
+<div class="flex h-screen bg-gray-100 dark:bg-[var(--bg-primary)] main-container">
+<aside class="bg-white dark:bg-[var(--bg-secondary)] transition-all duration-300 border-r border-gray-200 dark:border-[var(--border-color)] flex flex-col" id="sidebar">
+<div class="flex justify-between items-center p-4" id="sidebar-header">
+<h2 class="text-xl font-bold text-gray-900 dark:text-[var(--text-primary)] transition-opacity duration-300" id="sidebar-title">Chat History</h2>
+<button class="text-gray-600 dark:text-[var(--text-secondary)] flex-shrink-0" id="collapse-btn">
+<span class="material-icons transform transition-transform duration-300">chevron_left</span>
+</button>
+</div>
+<div class="px-4 pb-4" id="search-container">
+<div class="relative">
+<span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 transition-opacity duration-300 pointer-events-none">search</span>
+<input class="w-full bg-gray-100 dark:bg-[var(--bg-tertiary)] border border-gray-300 dark:border-[var(--border-color)] rounded-full py-2 pl-10 pr-4 text-gray-900 dark:text-[var(--text-primary)] placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] transition-opacity duration-300" placeholder="Search" type="search" id="search-input"/>
+</div>
+<button class="w-full mt-3 bg-[var(--accent-color)] hover:bg-violet-700 text-white rounded-lg py-2.5 px-4 font-medium transition-colors duration-200 flex items-center justify-center gap-2" id="new-chat-btn">
+<span class="material-icons text-lg">add</span>
+<span>New Chat</span>
+</button>
+</div>
+<nav class="space-y-2 flex-1 overflow-y-auto px-4 pb-4 pt-4 transition-opacity duration-300" id="sidebar-nav">
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Today</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2">
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Mental Health Check-in</a>
+<a class="block p-3 rounded-lg text-sm bg-[var(--bg-tertiary)] dark:bg-[var(--accent-color)]/20 text-gray-900 dark:text-[var(--accent-color)] font-medium border-l-4 border-[var(--accent-color)]" href="#">Study Stress Support</a>
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Anxiety Management</a>
+</div>
+</div>
+
+<div class="history-divider"></div>
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Yesterday</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2 hidden">
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Exam Preparation Help</a>
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Sleep Schedule Discussion</a>
+</div>
+</div>
+
+<div class="history-divider"></div>
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Previous 7 Days</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2 hidden">
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Social Anxiety Support</a>
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Academic Pressure</a>
+<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Mindfulness Techniques</a>
+</div>
+</div>
+</nav>
+</aside>
+<main class="flex-1 flex flex-col bg-gray-50 dark:bg-[var(--bg-primary)]">
+<header class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-[var(--border-color)]">
+<button class="sm:hidden text-gray-600 dark:text-[var(--text-secondary)] p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" id="menu-btn">
+<span class="material-icons">menu</span>
+</button>
+<h1 class="text-2xl font-semibold text-gray-900 dark:text-[var(--text-primary)] flex-grow text-center">Saathi</h1>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-gray-500 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)] transition-all duration-200" onclick="exportConversation()" title="Export Conversation">
+<span class="material-icons">download</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-gray-500 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)] transition-all duration-200" id="theme-toggle" onclick="toggleTheme()">
+<span class="material-icons block dark:hidden" id="dark-icon">brightness_2</span>
+<span class="material-icons hidden dark:block" id="light-icon">light_mode</span>
+</button>
+</div>
+</header>
+
+<div class="border-b border-gray-200 dark:border-[var(--border-color)] p-4 bg-white dark:bg-[var(--bg-secondary)]" id="themes-container">
+<div class="flex items-center justify-between mb-2">
+<span class="text-sm font-medium text-gray-700 dark:text-[var(--text-secondary)]">Choose a conversation theme:</span>
+<button class="text-xs text-[var(--accent-color)] hover:underline" onclick="toggleThemeSelector()">
+<span id="theme-toggle-text">Show themes</span>
+</button>
+</div>
+<div class="hidden" id="theme-selector">
+<div class="flex flex-wrap gap-2">
+<button class="theme-btn" data-theme="general" onclick="selectTheme('general')">
+<span class="material-icons">chat</span>
+<span>General Chat</span>
+</button>
+<button class="theme-btn" data-theme="stress" onclick="selectTheme('stress')">
+<span class="material-icons">psychology</span>
+<span>Study Stress</span>
+</button>
+<button class="theme-btn" data-theme="anxiety" onclick="selectTheme('anxiety')">
+<span class="material-icons">favorite</span>
+<span>Anxiety Support</span>
+</button>
+<button class="theme-btn" data-theme="relationships" onclick="selectTheme('relationships')">
+<span class="material-icons">people</span>
+<span>Relationships</span>
+</button>
+<button class="theme-btn" data-theme="depression" onclick="selectTheme('depression')">
+<span class="material-icons">self_improvement</span>
+<span>Mood Support</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-4 chat-container">
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-[var(--bg-tertiary)] flex items-center justify-center text-gray-600 dark:text-[var(--text-primary)] font-bold shrink-0">
+<span class="material-icons text-2xl">smart_toy</span>
+</div>
+<div class="bg-gray-200 dark:bg-[var(--bg-secondary)] rounded-2xl p-3 max-w-md">
+<p class="text-gray-800 dark:text-[var(--text-primary)]">Hello! I'm your friendly AI assistant. How can I help you with your web application design today?</p>
+<div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">2:15 PM</div>
+</div>
+</div>
+<div class="flex items-start justify-end gap-4">
+<div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
+<p>I'd like to implement a dark mode theme. Can you give me some tips on color palettes and best practices?</p>
+<div class="text-xs text-white/70 mt-2 text-right">2:17 PM</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
+<span class="material-icons text-2xl">person</span>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-[var(--bg-tertiary)] flex items-center justify-center text-gray-600 dark:text-[var(--text-primary)] font-bold shrink-0">
+<span class="material-icons text-2xl">smart_toy</span>
+</div>
+<div class="bg-gray-200 dark:bg-[var(--bg-secondary)] rounded-2xl p-3 max-w-md">
+<p class="text-gray-800 dark:text-[var(--text-primary)]">Of course! For dark mode, it's best to avoid pure black backgrounds. A dark gray like #121212 is easier on the eyes. Use a limited color palette with desaturated accent colors. Ensure sufficient contrast for text readability, adhering to WCAG guidelines. Shall I show you an example?</p>
+<div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">2:19 PM</div>
+</div>
+</div>
+</div>
+<div class="px-6 py-3 bg-gray-50 dark:bg-[var(--bg-primary)] border-t border-gray-200 dark:border-[var(--border-color)]">
+<div class="w-full max-w-4xl mx-auto">
+<div class="bg-white dark:bg-[var(--bg-secondary)] rounded-3xl p-1.5 flex items-end border dark:border-[var(--border-color)] input-wrapper">
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 text-[var(--text-primary)] placeholder-gray-500 dark:placeholder-gray-400 px-4 py-2 text-base focus:outline-none resize-none min-h-[2.5rem] max-h-32 overflow-y-auto" placeholder="Type your message..." rows="1" id="message-input" maxlength="2000"></textarea>
+<div class="flex items-center space-x-1">
+<button class="w-10 h-10 flex items-center justify-center text-gray-500 dark:text-[var(--text-secondary)] hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)] transition-all duration-200">
+<span class="material-icons text-xl">mic</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center bg-[var(--accent-color)] text-white rounded-full hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" id="send-btn" disabled>
+<span class="material-icons text-xl">send</span>
+</button>
+</div>
+</div>
+<div class="flex justify-between items-center mt-1 px-2">
+<div class="text-xs text-gray-400 dark:text-gray-500">Press Enter to send, Shift+Enter for new line</div>
+<div class="text-xs text-gray-400 dark:text-gray-500" id="char-counter">0/2000</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script src="script.js"></script>
+</body></html>
