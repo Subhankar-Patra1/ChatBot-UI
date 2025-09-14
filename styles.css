@@ -680,14 +680,35 @@ button:hover {
 /* Custom scrollbar styles */
 
 /* ===== CHAT HISTORY STYLES ===== */
+/* Reset any inherited spacing from parent nav */
+#sidebar-nav {
+  padding: 0 !important;
+}
+
 #chat-history-container {
   overflow-y: auto;
-  padding: var(--spacing-2) 0;
+  padding: var(--spacing-3) var(--spacing-4);
   max-height: calc(100vh - 200px);
+  /* Reset any inherited spacing */
+  margin: 0;
+  /* Ensure clean background */
+  background: transparent;
+}
+
+/* Reset spacing between sections to override space-y-2 */
+#chat-history-container > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .chat-history-section {
-  margin-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-4) !important;
+  background: transparent;
+  border-radius: 0;
+}
+
+.chat-history-section:last-child {
+  margin-bottom: 0 !important;
 }
 
 .chat-history-header {
@@ -695,20 +716,30 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-2) var(--spacing-4);
-  background: transparent;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent !important;
   border: none;
   cursor: pointer;
   transition: background-color var(--duration-fast) ease;
   border-radius: var(--radius-md);
+  margin: 0 !important;
 }
 
 .chat-history-header:hover {
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: rgba(139, 92, 246, 0.1) !important;
 }
 
 .chat-history-header .material-icons {
   transition: transform var(--duration-normal) ease;
+  color: var(--text-muted);
+}
+
+.chat-history-header span:first-child {
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .chat-history-content {
@@ -727,15 +758,18 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-2) var(--spacing-4);
-  margin: var(--spacing-1) 0;
+  padding: var(--spacing-3) var(--spacing-3);
+  margin: var(--spacing-1) 0 !important;
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--duration-fast) ease;
-  background: transparent;
+  background: transparent !important;
   border: 1px solid transparent;
   position: relative;
   overflow: hidden;
+  /* Reset any inherited styling */
+  box-shadow: none;
+  transform: none;
 }
 
 .chat-history-item:hover {
