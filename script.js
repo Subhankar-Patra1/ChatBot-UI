@@ -352,7 +352,7 @@ const clearChatAndShowWelcome = () => {
             <span class="material-icons text-2xl">psychology</span>
         </div>
         <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
-            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed">${randomMessage}</p>
+            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${randomMessage}</p>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timestamp}</div>
         </div>
     `;
@@ -373,12 +373,15 @@ const addUserMessage = (message) => {
         hour12: true 
     });
     
+    // Convert newlines to HTML line breaks
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    
     const userMessage = document.createElement('div');
     userMessage.className = 'flex items-start justify-end gap-4 message-slide-in';
     
     userMessage.innerHTML = `
         <div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
-            <p>${message}</p>
+            <p style="white-space: pre-wrap;">${formattedMessage}</p>
             <div class="text-xs text-white/70 mt-2 text-right">${timestamp}</div>
         </div>
         <div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
@@ -439,6 +442,9 @@ const addAIResponse = (userMessage) => {
     const aiResponse = generateAIResponse(userMessage);
     const quickReplies = generateQuickReplies(userMessage);
     
+    // Convert newlines to HTML line breaks for AI responses too
+    const formattedAIResponse = aiResponse.replace(/\n/g, '<br>');
+    
     const aiMessage = document.createElement('div');
     aiMessage.className = 'flex items-start gap-4 message-slide-in';
     
@@ -447,7 +453,7 @@ const addAIResponse = (userMessage) => {
             <span class="material-icons text-2xl">psychology</span>
         </div>
         <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
-            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed">${aiResponse}</p>
+            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${formattedAIResponse}</p>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timestamp}</div>
             <div class="message-reactions">
                 <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')">
@@ -621,12 +627,15 @@ const showThemeWelcomeMessage = (theme) => {
     const themeMessage = document.createElement('div');
     themeMessage.className = 'flex items-start gap-4 message-slide-in';
     
+    // Format theme message to handle potential line breaks
+    const formattedThemeMessage = messages[theme].replace(/\n/g, '<br>');
+    
     themeMessage.innerHTML = `
         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
             <span class="material-icons text-2xl">psychology</span>
         </div>
         <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
-            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed">${messages[theme]}</p>
+            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${formattedThemeMessage}</p>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timestamp}</div>
         </div>
     `;
