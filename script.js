@@ -1047,39 +1047,16 @@ class ChatHistory {
     
     groupChatsByDate() {
         const grouped = {
-            'Today': [],
-            'Yesterday': [],
-            'This Week': [],
-            'This Month': [],
-            'Older': []
+            'Recent': []
         };
         
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-        const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        
+        // Add all chats to Recent, sorted by last activity
         Object.values(this.chats).forEach(chat => {
-            const chatDate = new Date(chat.lastActivity);
-            const chatDay = new Date(chatDate.getFullYear(), chatDate.getMonth(), chatDate.getDate());
-            
-            if (chatDay.getTime() === today.getTime()) {
-                grouped['Today'].push(chat);
-            } else if (chatDay.getTime() === yesterday.getTime()) {
-                grouped['Yesterday'].push(chat);
-            } else if (chatDate >= thisWeek) {
-                grouped['This Week'].push(chat);
-            } else if (chatDate >= thisMonth) {
-                grouped['This Month'].push(chat);
-            } else {
-                grouped['Older'].push(chat);
-            }
+            grouped['Recent'].push(chat);
         });
         
-        Object.keys(grouped).forEach(key => {
-            grouped[key].sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-        });
+        // Sort by most recent first
+        grouped['Recent'].sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
         
         return grouped;
     }
@@ -1097,11 +1074,10 @@ class ChatHistory {
             const section = document.createElement('div');
             section.className = 'chat-history-section';
             
-            const header = document.createElement('button');
+            const header = document.createElement('div');
             header.className = 'chat-history-header';
             header.innerHTML = `
                 <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${period}</span>
-                <span class="material-icons text-gray-400 transition-transform duration-200">keyboard_arrow_down</span>
             `;
             
             const content = document.createElement('div');
@@ -1110,13 +1086,6 @@ class ChatHistory {
             chats.forEach(chat => {
                 const chatItem = this.createChatItem(chat);
                 content.appendChild(chatItem);
-            });
-            
-            header.addEventListener('click', () => {
-                const isCollapsed = content.classList.contains('collapsed');
-                content.classList.toggle('collapsed');
-                const icon = header.querySelector('.material-icons');
-                icon.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(-180deg)';
             });
             
             section.appendChild(header);
