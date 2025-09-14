@@ -290,6 +290,12 @@ const autoResizeTextarea = () => {
     const sendMessage = () => {
         const message = messageInput.value.trim();
         if (message) {
+            // Create new chat if none exists
+            if (!window.currentChatId) {
+                window.currentChatId = generateChatId();
+                updateChatHistoryDisplay();
+            }
+            
             addUserMessage(message);
             messageInput.value = '';
             handleInput();
@@ -311,6 +317,294 @@ const autoResizeTextarea = () => {
     adjustHeight();
 };
 
+// Chat History Management
+window.currentChatId = null;
+let chatHistory = JSON.parse(localStorage.getItem('chatbot-history') || '[]');
+
+const generateChatId = () => {
+    return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+};
+
+const generateChatTitle = (firstMessage) => {
+    if (!firstMessage) return 'New Chat';
+    
+    // Generate a meaningful title from the first message
+    const words = firstMessage.split(' ').slice(0, 4);
+    return words.join(' ') + (firstMessage.split(' ').length > 4 ? '...' : '');
+};
+
+const saveChatToHistory = (chatId, title, messages) => {
+    const existingChatIndex = chatHistory.findIndex(chat => chat.id === chatId);
+    const chatData = {
+        id: chatId,
+        title: title,
+        messages: messages,
+        timestamp: Date.now(),
+        date: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    };
+    
+    if (existingChatIndex !== -1) {
+        chatHistory[existingChatIndex] = chatData;
+    } else {
+        chatHistory.unshift(chatData); // Add to beginning
+    }
+    
+    localStorage.setItem('chatbot-history', JSON.stringify(chatHistory));
+    updateChatHistoryDisplay();
+};
+
+const deleteChatFromHistory = (chatId) => {
+    chatHistory = chatHistory.filter(chat => chat.id !== chatId);
+    localStorage.setItem('chatbot-history', JSON.stringify(chatHistory));
+    updateChatHistoryDisplay();
+    
+    // If current chat is deleted, start a new one
+    if (window.currentChatId === chatId) {
+        startNewChat();
+    }
+};
+
+const renameChatInHistory = (chatId, newTitle) => {
+    const chatIndex = chatHistory.findIndex(chat => chat.id === chatId);
+    if (chatIndex !== -1) {
+        chatHistory[chatIndex].title = newTitle;
+        localStorage.setItem('chatbot-history', JSON.stringify(chatHistory));
+        updateChatHistoryDisplay();
+    }
+};
+
+const loadChatFromHistory = (chatId) => {
+    const chat = chatHistory.find(c => c.id === chatId);
+    if (!chat) return;
+    
+    window.currentChatId = chatId;
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    
+    if (chatContainer) {
+        chatContainer.innerHTML = '';
+        
+        // Recreate messages from history
+        chat.messages.forEach(msg => {
+            if (msg.type === 'user') {
+                recreateUserMessage(msg.content, msg.timestamp);
+            } else if (msg.type === 'ai') {
+                recreateAIMessage(msg.content, msg.timestamp);
+            }
+        });
+        
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    updateChatHistoryDisplay();
+};
+
+const recreateUserMessage = (content, timestamp) => {
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    if (!chatContainer) return;
+    
+    const formattedMessage = content.replace(/\n/g, '<br>');
+    const userMessage = document.createElement('div');
+    userMessage.className = 'flex items-start justify-end gap-4 message-slide-in';
+    
+    userMessage.innerHTML = `
+        <div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
+            <p style="white-space: pre-wrap;">${formattedMessage}</p>
+            <div class="text-xs text-white/70 mt-2 text-right">${timestamp}</div>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
+            <span class="material-icons text-2xl">person</span>
+        </div>
+    `;
+    
+    chatContainer.appendChild(userMessage);
+};
+
+const recreateAIMessage = (content, timestamp) => {
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    if (!chatContainer) return;
+    
+    const formattedResponse = content.replace(/\n/g, '<br>');
+    const aiMessage = document.createElement('div');
+    aiMessage.className = 'flex items-start gap-4 message-slide-in';
+    
+    aiMessage.innerHTML = `
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
+            <span class="material-icons text-2xl">psychology</span>
+        </div>
+        <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
+            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${formattedResponse}</p>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timestamp}</div>
+            <div class="message-reactions">
+                <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')">
+                    <span class="material-icons" style="font-size: 14px;">thumb_up</span>
+                </button>
+                <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_down')">
+                    <span class="material-icons" style="font-size: 14px;">thumb_down</span>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    chatContainer.appendChild(aiMessage);
+};
+
+const startNewChat = () => {
+    window.currentChatId = generateChatId();
+    clearChatAndShowWelcome();
+    
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+        messageInput.value = '';
+        messageInput.focus();
+    }
+    
+    updateChatHistoryDisplay();
+};
+
+const getCurrentChatMessages = () => {
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    
+    if (!chatContainer) return [];
+    
+    const messages = [];
+    const messageElements = chatContainer.querySelectorAll('.message-slide-in');
+    
+    messageElements.forEach(element => {
+        const isUser = element.classList.contains('justify-end') || element.querySelector('.bg-\\[var\\(--accent-color\\)\\]');
+        const messageText = element.querySelector('p')?.textContent || '';
+        const timestamp = element.querySelector('.text-xs')?.textContent || '';
+        
+        if (messageText.trim()) {
+            messages.push({
+                type: isUser ? 'user' : 'ai',
+                content: messageText,
+                timestamp: timestamp
+            });
+        }
+    });
+    
+    return messages;
+};
+
+const categorizeChats = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const categories = {
+        today: [],
+        yesterday: [],
+        week: [],
+        older: []
+    };
+    
+    chatHistory.forEach(chat => {
+        if (chat.date === today) {
+            categories.today.push(chat);
+        } else if (chat.date === yesterday) {
+            categories.yesterday.push(chat);
+        } else if (chat.date >= sevenDaysAgo) {
+            categories.week.push(chat);
+        } else {
+            categories.older.push(chat);
+        }
+    });
+    
+    return categories;
+};
+
+const updateChatHistoryDisplay = () => {
+    const categories = categorizeChats();
+    const chatHistoryContainer = document.getElementById('chat-history-container');
+    
+    if (!chatHistoryContainer) return;
+    
+    // Check if there are any chats at all
+    const totalChats = categories.today.length + categories.yesterday.length + categories.week.length + categories.older.length;
+    
+    if (totalChats === 0) {
+        chatHistoryContainer.innerHTML = `
+            <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                <span class="material-icons text-4xl mb-2 opacity-50">chat</span>
+                <p class="text-sm">No chat history yet</p>
+                <p class="text-xs mt-1">Start a conversation to see it here</p>
+            </div>
+        `;
+        return;
+    }
+    
+    chatHistoryContainer.innerHTML = `
+        ${createCategorySection('Today', categories.today, 'today')}
+        ${categories.yesterday.length > 0 ? '<div class="history-divider"></div>' + createCategorySection('Yesterday', categories.yesterday, 'yesterday') : ''}
+        ${categories.week.length > 0 ? '<div class="history-divider"></div>' + createCategorySection('Previous 7 Days', categories.week, 'week') : ''}
+        ${categories.older.length > 0 ? '<div class="history-divider"></div>' + createCategorySection('Older', categories.older, 'older') : ''}
+    `;
+};
+
+const createCategorySection = (title, chats, categoryId) => {
+    if (chats.length === 0) return '';
+    
+    const chatItems = chats.map(chat => `
+        <div class="chat-item ${window.currentChatId === chat.id ? 'active' : ''}">
+            <button onclick="loadChatFromHistory('${chat.id}')" class="chat-title">
+                ${chat.title}
+            </button>
+            <div class="chat-actions">
+                <button onclick="showRenameDialog('${chat.id}', '${chat.title.replace(/'/g, "\\'")}' )" class="chat-action-btn" title="Rename">
+                    <span class="material-icons">edit</span>
+                </button>
+                <button onclick="deleteChatFromHistory('${chat.id}')" class="chat-action-btn" title="Delete">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    return `
+        <div class="chat-category">
+            <div onclick="toggleCategory('${categoryId}')" class="category-header">
+                <span class="material-icons" id="${categoryId}-arrow">keyboard_arrow_down</span>
+                <span>${title}</span>
+            </div>
+            <div class="category-chats" id="${categoryId}-content">
+                ${chatItems}
+            </div>
+        </div>
+    `;
+};
+
+const toggleCategory = (categoryId) => {
+    const content = document.getElementById(`${categoryId}-content`);
+    const arrow = document.getElementById(`${categoryId}-arrow`);
+    
+    if (content && arrow) {
+        const isCollapsed = content.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+            content.classList.remove('collapsed');
+            arrow.style.transform = 'rotate(0deg)';
+        } else {
+            content.classList.add('collapsed');
+            arrow.style.transform = 'rotate(-90deg)';
+        }
+    }
+};
+
+const showRenameDialog = (chatId, currentTitle) => {
+    const newTitle = prompt('Enter new title:', currentTitle);
+    if (newTitle && newTitle.trim() && newTitle !== currentTitle) {
+        renameChatInHistory(chatId, newTitle.trim());
+    }
+};
+
 const initializeNewChat = () => {
     const newChatBtn = document.getElementById('new-chat-btn');
     if (!newChatBtn) return;
@@ -318,13 +612,7 @@ const initializeNewChat = () => {
     newChatBtn.addEventListener('click', () => {
         console.log('Starting new chat...');
         
-        clearChatAndShowWelcome();
-        
-        const messageInput = document.getElementById('message-input');
-        if (messageInput) {
-            messageInput.value = '';
-            messageInput.focus();
-        }
+        startNewChat();
         
         newChatBtn.classList.add('animate-pulse');
         setTimeout(() => {
@@ -405,9 +693,13 @@ const addUserMessage = (message) => {
     chatContainer.appendChild(userMessage);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     
-    // Add to chat history
-    if (window.chatHistoryManager) {
-        window.chatHistoryManager.addMessageToCurrentChat('user', message);
+    // Save user message to chat history
+    if (window.currentChatId) {
+        saveChatToHistory(window.currentChatId, {
+            type: 'user',
+            content: message,
+            timestamp: new Date().toISOString()
+        });
     }
 };
 
@@ -503,9 +795,14 @@ const addAIResponse = (userMessage) => {
     
     chatContainer.scrollTop = chatContainer.scrollHeight;
     
-    // Add to chat history
-    if (window.chatHistoryManager) {
-        window.chatHistoryManager.addMessageToCurrentChat('ai', aiResponse, quickReplies);
+    // Save AI response to chat history
+    if (window.currentChatId) {
+        saveChatToHistory(window.currentChatId, {
+            type: 'ai',
+            content: aiResponse,
+            timestamp: new Date().toISOString(),
+            quickReplies: quickReplies
+        });
     }
 };
 
@@ -788,6 +1085,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeNewChat();
     loadProgress();
     
+    // Initialize chat history
+    console.log('Loading chat history...', chatHistory.length, 'chats found');
+    
+    // For testing - create sample data if none exists
+    if (chatHistory.length === 0) {
+        console.log('No chat history found, creating sample data for testing');
+        // Don't actually save sample data, just display empty state
+    }
+    
+    updateChatHistoryDisplay();
+    
     trackProgress('conversation_started');
     
     const overlay = document.getElementById('mobile-overlay');
@@ -837,353 +1145,3 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeUserPreferences();
     }
 });
-
-class ChatHistory {
-    constructor() {
-        this.chats = this.loadChats();
-        this.currentChatId = null;
-        this.init();
-    }
-    
-    init() {
-        this.renderChatHistory();
-        this.bindEvents();
-    }
-    
-    loadChats() {
-        const saved = localStorage.getItem('chatbot-chat-history');
-        return saved ? JSON.parse(saved) : {};
-    }
-    
-    saveChats() {
-        localStorage.setItem('chatbot-chat-history', JSON.stringify(this.chats));
-    }
-    
-    createNewChat() {
-        const chatId = 'chat-' + Date.now();
-        const now = new Date();
-        
-        const newChat = {
-            id: chatId,
-            title: 'New Chat',
-            createdAt: now.toISOString(),
-            lastActivity: now.toISOString(),
-            messages: []
-        };
-        
-        this.chats[chatId] = newChat;
-        this.currentChatId = chatId;
-        this.saveChats();
-        this.renderChatHistory();
-        
-        clearChatAndShowWelcome();
-        
-        return chatId;
-    }
-    
-    renameChat(chatId, newTitle) {
-        if (this.chats[chatId]) {
-            this.chats[chatId].title = newTitle.trim() || 'Untitled Chat';
-            this.saveChats();
-            this.renderChatHistory();
-        }
-    }
-    
-    deleteChat(chatId) {
-        if (this.chats[chatId]) {
-            delete this.chats[chatId];
-            
-            if (this.currentChatId === chatId) {
-                this.currentChatId = null;
-                clearChatAndShowWelcome();
-            }
-            
-            this.saveChats();
-            this.renderChatHistory();
-        }
-    }
-    
-    switchToChat(chatId) {
-        if (this.chats[chatId]) {
-            this.currentChatId = chatId;
-            this.loadChatMessages(chatId);
-            this.chats[chatId].lastActivity = new Date().toISOString();
-            this.saveChats();
-        }
-    }
-    
-    loadChatMessages(chatId) {
-        const chat = this.chats[chatId];
-        if (!chat) return;
-        
-        const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
-                             document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
-                             document.querySelector('.flex-1.overflow-y-auto');
-        if (!chatContainer) return;
-        
-        chatContainer.innerHTML = '';
-        
-        if (chat.messages.length === 0) {
-            clearChatAndShowWelcome();
-        } else {
-            chat.messages.forEach(message => {
-                if (message.type === 'user') {
-                    this.renderUserMessage(message.content, message.timestamp);
-                } else if (message.type === 'ai') {
-                    this.renderAIMessage(message.content, message.timestamp, message.quickReplies);
-                }
-            });
-        }
-        
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-    
-    addMessageToCurrentChat(type, content, quickReplies = []) {
-        if (!this.currentChatId) {
-            this.createNewChat();
-        }
-        
-        const message = {
-            type: type,
-            content: content,
-            timestamp: new Date().toISOString(),
-            quickReplies: quickReplies
-        };
-        
-        this.chats[this.currentChatId].messages.push(message);
-        this.chats[this.currentChatId].lastActivity = new Date().toISOString();
-        
-        if (type === 'user' && this.chats[this.currentChatId].title === 'New Chat') {
-            const title = content.length > 30 ? content.substring(0, 30) + '...' : content;
-            this.chats[this.currentChatId].title = title;
-        }
-        
-        this.saveChats();
-        this.renderChatHistory();
-    }
-    
-    renderUserMessage(content, timestamp) {
-        const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
-                             document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
-                             document.querySelector('.flex-1.overflow-y-auto');
-        if (!chatContainer) return;
-        
-        const timeString = new Date(timestamp).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        });
-        
-        const formattedMessage = content.replace(/\n/g, '<br>');
-        
-        const userMessage = document.createElement('div');
-        userMessage.className = 'flex items-start justify-end gap-4 message-slide-in';
-        
-        userMessage.innerHTML = `
-            <div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
-                <p style="white-space: pre-wrap;">${formattedMessage}</p>
-                <div class="text-xs text-white/70 mt-2 text-right">${timeString}</div>
-            </div>
-            <div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
-                <span class="material-icons text-2xl">person</span>
-            </div>
-        `;
-        
-        chatContainer.appendChild(userMessage);
-    }
-    
-    renderAIMessage(content, timestamp, quickReplies = []) {
-        const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
-                             document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
-                             document.querySelector('.flex-1.overflow-y-auto');
-        if (!chatContainer) return;
-        
-        const timeString = new Date(timestamp).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-        });
-        
-        const formattedMessage = content.replace(/\n/g, '<br>');
-        
-        const aiMessage = document.createElement('div');
-        aiMessage.className = 'flex items-start gap-4 message-slide-in';
-        
-        aiMessage.innerHTML = `
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
-                <span class="material-icons text-2xl">psychology</span>
-            </div>
-            <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
-                <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${formattedMessage}</p>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timeString}</div>
-                <div class="message-reactions">
-                    <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')">
-                        <span class="material-icons" style="font-size: 14px;">thumb_up</span>
-                    </button>
-                    <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_down')">
-                        <span class="material-icons" style="font-size: 14px;">thumb_down</span>
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        chatContainer.appendChild(aiMessage);
-        
-        if (quickReplies && quickReplies.length > 0) {
-            const quickReplyContainer = document.createElement('div');
-            quickReplyContainer.className = 'quick-replies';
-            
-            quickReplies.forEach(reply => {
-                const button = document.createElement('button');
-                button.className = 'quick-reply-btn';
-                button.textContent = reply;
-                button.onclick = () => handleQuickReply(reply);
-                quickReplyContainer.appendChild(button);
-            });
-            
-            chatContainer.appendChild(quickReplyContainer);
-        }
-    }
-    
-    groupChatsByDate() {
-        const grouped = {
-            'Recent': []
-        };
-        
-        // Add all chats to Recent, sorted by last activity
-        Object.values(this.chats).forEach(chat => {
-            grouped['Recent'].push(chat);
-        });
-        
-        // Sort by most recent first
-        grouped['Recent'].sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-        
-        return grouped;
-    }
-    
-    renderChatHistory() {
-        const container = document.getElementById('chat-history-container');
-        if (!container) return;
-        
-        const grouped = this.groupChatsByDate();
-        container.innerHTML = '';
-        
-        Object.entries(grouped).forEach(([period, chats]) => {
-            if (chats.length === 0) return;
-            
-            const section = document.createElement('div');
-            section.className = 'chat-history-section';
-            
-            const header = document.createElement('div');
-            header.className = 'chat-history-header';
-            header.innerHTML = `
-                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${period}</span>
-            `;
-            
-            const content = document.createElement('div');
-            content.className = 'chat-history-content';
-            
-            chats.forEach(chat => {
-                const chatItem = this.createChatItem(chat);
-                content.appendChild(chatItem);
-            });
-            
-            section.appendChild(header);
-            section.appendChild(content);
-            container.appendChild(section);
-        });
-    }
-    
-    createChatItem(chat) {
-        const item = document.createElement('div');
-        item.className = 'chat-history-item';
-        item.dataset.chatId = chat.id;
-        
-        const isActive = this.currentChatId === chat.id;
-        if (isActive) {
-            item.classList.add('active');
-        }
-        
-        item.innerHTML = `
-            <div class="chat-item-content" onclick="window.chatHistoryManager.switchToChat('${chat.id}')">
-                <div class="chat-title">${this.escapeHtml(chat.title)}</div>
-                <div class="chat-time">${this.formatRelativeTime(chat.lastActivity)}</div>
-            </div>
-            <div class="chat-actions">
-                <button class="chat-action-btn" onclick="window.chatHistoryManager.showRenameDialog('${chat.id}')" title="Rename">
-                    <span class="material-icons">edit</span>
-                </button>
-                <button class="chat-action-btn delete" onclick="window.chatHistoryManager.showDeleteDialog('${chat.id}')" title="Delete">
-                    <span class="material-icons">delete</span>
-                </button>
-            </div>
-        `;
-        
-        return item;
-    }
-    
-    showRenameDialog(chatId) {
-        const chat = this.chats[chatId];
-        if (!chat) return;
-        
-        const newTitle = prompt('Enter new chat title:', chat.title);
-        if (newTitle !== null) {
-            this.renameChat(chatId, newTitle);
-        }
-    }
-    
-    showDeleteDialog(chatId) {
-        const chat = this.chats[chatId];
-        if (!chat) return;
-        
-        if (confirm(`Are you sure you want to delete "${chat.title}"?`)) {
-            this.deleteChat(chatId);
-        }
-    }
-    
-    formatRelativeTime(isoString) {
-        const date = new Date(isoString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-        
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-    
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    bindEvents() {
-        const newChatBtn = document.getElementById('new-chat-btn');
-        if (newChatBtn) {
-            newChatBtn.removeEventListener('click', this.originalNewChatHandler);
-            this.originalNewChatHandler = () => {
-                this.createNewChat();
-                
-                const messageInput = document.getElementById('message-input');
-                if (messageInput) {
-                    messageInput.value = '';
-                    messageInput.focus();
-                }
-                
-                newChatBtn.classList.add('animate-pulse');
-                setTimeout(() => {
-                    newChatBtn.classList.remove('animate-pulse');
-                }, 1000);
-            };
-            newChatBtn.addEventListener('click', this.originalNewChatHandler);
-        }
-    }
-}
-
-window.chatHistoryManager = new ChatHistory();
