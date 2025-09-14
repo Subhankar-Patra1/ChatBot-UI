@@ -760,7 +760,7 @@ button:hover {
   justify-content: space-between;
   padding: var(--spacing-3) var(--spacing-3);
   margin: 0 0 var(--spacing-2) 0 !important;
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   cursor: pointer;
   transition: all var(--duration-fast) ease;
   background: transparent !important;
@@ -779,7 +779,7 @@ button:hover {
 
 .chat-history-item:hover {
   background: rgba(139, 92, 246, 0.08) !important;
-  border-radius: var(--radius-lg);
+  border-radius: 0;
 }
 
 .chat-history-item:hover .chat-title {
@@ -793,7 +793,7 @@ button:hover {
 
 .chat-history-item.active {
   background: rgba(139, 92, 246, 0.12) !important;
-  border-radius: var(--radius-lg);
+  border-radius: 0;
 }
 
 .chat-history-item.active .chat-title {
