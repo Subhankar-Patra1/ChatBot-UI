@@ -1,6 +1,7 @@
 const initializeUserPreferences = () => {
     const savedTheme = localStorage.getItem('chatbot-theme');
     const html = document.documentElement;
+    const themeIcon = document.getElementById('theme-icon');
     
     if (savedTheme === 'dark') {
         html.classList.add('dark');
@@ -13,6 +14,12 @@ const initializeUserPreferences = () => {
         }
     }
     
+    // Set the correct icon based on current theme
+    if (themeIcon) {
+        const isDark = html.classList.contains('dark');
+        themeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+    }
+    
     const savedSidebarState = localStorage.getItem('chatbot-sidebar-collapsed');
     if (savedSidebarState === 'true' && window.innerWidth > 768) {
         isSidebarCollapsed = true;
@@ -22,11 +29,17 @@ const initializeUserPreferences = () => {
 
 const toggleTheme = () => {
     const html = document.documentElement;
+    const themeIcon = document.getElementById('theme-icon');
     
     html.classList.toggle('dark');
     
     const isDark = html.classList.contains('dark');
     localStorage.setItem('chatbot-theme', isDark ? 'dark' : 'light');
+    
+    // Update the icon based on current theme
+    if (themeIcon) {
+        themeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+    }
     
     void html.offsetHeight;
 };
