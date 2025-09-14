@@ -725,7 +725,7 @@ button:hover {
   cursor: default;
   transition: none;
   border-radius: 0;
-  margin: 0 0 var(--spacing-3) 0 !important;
+  margin: 0 0 var(--spacing-4) 0 !important;
   pointer-events: none;
 }
 
