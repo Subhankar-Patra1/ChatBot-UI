@@ -687,12 +687,14 @@ button:hover {
 
 #chat-history-container {
   overflow-y: auto;
-  padding: var(--spacing-2) var(--spacing-3);
+  overflow-x: hidden;
+  padding: var(--spacing-2) var(--spacing-4);
   max-height: calc(100vh - 200px);
   /* Reset any inherited spacing */
   margin: 0;
   /* Ensure clean background */
   background: transparent;
+  width: 100%;
 }
 
 /* Reset spacing between sections to override space-y-2 */
@@ -702,9 +704,10 @@ button:hover {
 }
 
 .chat-history-section {
-  margin-bottom: var(--spacing-5) !important;
+  margin-bottom: var(--spacing-4) !important;
   background: transparent;
   border-radius: 0;
+  width: 100%;
 }
 
 .chat-history-section:last-child {
@@ -722,7 +725,7 @@ button:hover {
   cursor: pointer;
   transition: background-color var(--duration-fast) ease;
   border-radius: var(--radius-md);
-  margin: 0 0 var(--spacing-3) 0 !important;
+  margin: 0 0 var(--spacing-2) 0 !important;
 }
 
 .chat-history-header:hover {
@@ -758,47 +761,45 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-4) var(--spacing-3);
-  margin: 0 0 var(--spacing-3) 0 !important;
-  border-radius: var(--radius-xl);
+  padding: var(--spacing-3) var(--spacing-3);
+  margin: 0 0 var(--spacing-2) 0 !important;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--duration-fast) ease;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(139, 92, 246, 0.08) !important;
+  border: 1px solid rgba(139, 92, 246, 0.15);
   position: relative;
   overflow: hidden;
   /* Reset any inherited styling */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   transform: none;
-  backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dark .chat-history-item {
-  background: rgba(139, 92, 246, 0.08) !important;
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: rgba(139, 92, 246, 0.12) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
 .chat-history-item:hover {
-  background: rgba(139, 92, 246, 0.12) !important;
+  background: rgba(139, 92, 246, 0.15) !important;
   border-color: rgba(139, 92, 246, 0.25);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
 }
 
 .chat-history-item.active {
-  background: rgba(139, 92, 246, 0.15) !important;
+  background: rgba(139, 92, 246, 0.2) !important;
   border-color: rgba(139, 92, 246, 0.35);
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
 }
 
 .dark .chat-history-item:hover {
-  background: rgba(139, 92, 246, 0.15) !important;
+  background: rgba(139, 92, 246, 0.18) !important;
   border-color: rgba(139, 92, 246, 0.3);
 }
 
 .dark .chat-history-item.active {
-  background: rgba(139, 92, 246, 0.2) !important;
+  background: rgba(139, 92, 246, 0.25) !important;
   border-color: rgba(139, 92, 246, 0.4);
 }
 
@@ -856,31 +857,28 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.1);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  background: rgba(139, 92, 246, 0.1);
   border: none;
   cursor: pointer;
   transition: all var(--duration-fast) ease;
   color: var(--text-muted);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
 }
 
 .dark .chat-action-btn {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.15);
 }
 
 .chat-action-btn:hover {
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.2);
   color: var(--accent-color);
-  transform: scale(1.05);
+  transform: scale(1.1);
 }
 
 .chat-action-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
 }
 
