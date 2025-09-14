@@ -687,7 +687,7 @@ button:hover {
 
 #chat-history-container {
   overflow-y: auto;
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-3);
   max-height: calc(100vh - 200px);
   /* Reset any inherited spacing */
   margin: 0;
@@ -702,7 +702,7 @@ button:hover {
 }
 
 .chat-history-section {
-  margin-bottom: var(--spacing-4) !important;
+  margin-bottom: var(--spacing-5) !important;
   background: transparent;
   border-radius: 0;
 }
@@ -716,13 +716,13 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-1);
   background: transparent !important;
   border: none;
   cursor: pointer;
   transition: background-color var(--duration-fast) ease;
   border-radius: var(--radius-md);
-  margin: 0 !important;
+  margin: 0 0 var(--spacing-3) 0 !important;
 }
 
 .chat-history-header:hover {
@@ -758,30 +758,48 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-3) var(--spacing-3);
-  margin: var(--spacing-1) 0 !important;
-  border-radius: var(--radius-lg);
+  padding: var(--spacing-4) var(--spacing-3);
+  margin: 0 0 var(--spacing-3) 0 !important;
+  border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all var(--duration-fast) ease;
-  background: transparent !important;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
   /* Reset any inherited styling */
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transform: none;
+  backdrop-filter: blur(10px);
+}
+
+.dark .chat-history-item {
+  background: rgba(139, 92, 246, 0.08) !important;
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .chat-history-item:hover {
-  background: rgba(139, 92, 246, 0.05);
-  border-color: rgba(139, 92, 246, 0.2);
-  transform: translateX(2px);
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: rgba(139, 92, 246, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
 }
 
 .chat-history-item.active {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+}
+
+.dark .chat-history-item:hover {
+  background: rgba(139, 92, 246, 0.15) !important;
   border-color: rgba(139, 92, 246, 0.3);
-  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.1);
+}
+
+.dark .chat-history-item.active {
+  background: rgba(139, 92, 246, 0.2) !important;
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .chat-history-item.active::before {
@@ -802,19 +820,24 @@ button:hover {
 
 .chat-title {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.4;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .chat-time {
   font-size: var(--font-size-xs);
+.chat-time {
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
   line-height: 1.2;
+  font-weight: 400;
+  opacity: 0.8;
 }
 
 .chat-actions {
@@ -833,24 +856,31 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-md);
-  background: transparent;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.1);
   border: none;
   cursor: pointer;
   transition: all var(--duration-fast) ease;
   color: var(--text-muted);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.dark .chat-action-btn {
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .chat-action-btn:hover {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.15);
   color: var(--accent-color);
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .chat-action-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
 }
 
