@@ -404,6 +404,11 @@ const addUserMessage = (message) => {
     
     chatContainer.appendChild(userMessage);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Add to chat history
+    if (window.chatHistoryManager) {
+        window.chatHistoryManager.addMessageToCurrentChat('user', message);
+    }
 };
 
 const showTypingIndicator = () => {
@@ -497,6 +502,11 @@ const addAIResponse = (userMessage) => {
     }
     
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Add to chat history
+    if (window.chatHistoryManager) {
+        window.chatHistoryManager.addMessageToCurrentChat('ai', aiResponse, quickReplies);
+    }
 };
 
 const generateAIResponse = (userMessage) => {
@@ -827,3 +837,384 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeUserPreferences();
     }
 });
+
+class ChatHistory {
+    constructor() {
+        this.chats = this.loadChats();
+        this.currentChatId = null;
+        this.init();
+    }
+    
+    init() {
+        this.renderChatHistory();
+        this.bindEvents();
+    }
+    
+    loadChats() {
+        const saved = localStorage.getItem('chatbot-chat-history');
+        return saved ? JSON.parse(saved) : {};
+    }
+    
+    saveChats() {
+        localStorage.setItem('chatbot-chat-history', JSON.stringify(this.chats));
+    }
+    
+    createNewChat() {
+        const chatId = 'chat-' + Date.now();
+        const now = new Date();
+        
+        const newChat = {
+            id: chatId,
+            title: 'New Chat',
+            createdAt: now.toISOString(),
+            lastActivity: now.toISOString(),
+            messages: []
+        };
+        
+        this.chats[chatId] = newChat;
+        this.currentChatId = chatId;
+        this.saveChats();
+        this.renderChatHistory();
+        
+        clearChatAndShowWelcome();
+        
+        return chatId;
+    }
+    
+    renameChat(chatId, newTitle) {
+        if (this.chats[chatId]) {
+            this.chats[chatId].title = newTitle.trim() || 'Untitled Chat';
+            this.saveChats();
+            this.renderChatHistory();
+        }
+    }
+    
+    deleteChat(chatId) {
+        if (this.chats[chatId]) {
+            delete this.chats[chatId];
+            
+            if (this.currentChatId === chatId) {
+                this.currentChatId = null;
+                clearChatAndShowWelcome();
+            }
+            
+            this.saveChats();
+            this.renderChatHistory();
+        }
+    }
+    
+    switchToChat(chatId) {
+        if (this.chats[chatId]) {
+            this.currentChatId = chatId;
+            this.loadChatMessages(chatId);
+            this.chats[chatId].lastActivity = new Date().toISOString();
+            this.saveChats();
+        }
+    }
+    
+    loadChatMessages(chatId) {
+        const chat = this.chats[chatId];
+        if (!chat) return;
+        
+        const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                             document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                             document.querySelector('.flex-1.overflow-y-auto');
+        if (!chatContainer) return;
+        
+        chatContainer.innerHTML = '';
+        
+        if (chat.messages.length === 0) {
+            clearChatAndShowWelcome();
+        } else {
+            chat.messages.forEach(message => {
+                if (message.type === 'user') {
+                    this.renderUserMessage(message.content, message.timestamp);
+                } else if (message.type === 'ai') {
+                    this.renderAIMessage(message.content, message.timestamp, message.quickReplies);
+                }
+            });
+        }
+        
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    addMessageToCurrentChat(type, content, quickReplies = []) {
+        if (!this.currentChatId) {
+            this.createNewChat();
+        }
+        
+        const message = {
+            type: type,
+            content: content,
+            timestamp: new Date().toISOString(),
+            quickReplies: quickReplies
+        };
+        
+        this.chats[this.currentChatId].messages.push(message);
+        this.chats[this.currentChatId].lastActivity = new Date().toISOString();
+        
+        if (type === 'user' && this.chats[this.currentChatId].title === 'New Chat') {
+            const title = content.length > 30 ? content.substring(0, 30) + '...' : content;
+            this.chats[this.currentChatId].title = title;
+        }
+        
+        this.saveChats();
+        this.renderChatHistory();
+    }
+    
+    renderUserMessage(content, timestamp) {
+        const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                             document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                             document.querySelector('.flex-1.overflow-y-auto');
+        if (!chatContainer) return;
+        
+        const timeString = new Date(timestamp).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        
+        const formattedMessage = content.replace(/\n/g, '<br>');
+        
+        const userMessage = document.createElement('div');
+        userMessage.className = 'flex items-start justify-end gap-4 message-slide-in';
+        
+        userMessage.innerHTML = `
+            <div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
+                <p style="white-space: pre-wrap;">${formattedMessage}</p>
+                <div class="text-xs text-white/70 mt-2 text-right">${timeString}</div>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
+                <span class="material-icons text-2xl">person</span>
+            </div>
+        `;
+        
+        chatContainer.appendChild(userMessage);
+    }
+    
+    renderAIMessage(content, timestamp, quickReplies = []) {
+        const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                             document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                             document.querySelector('.flex-1.overflow-y-auto');
+        if (!chatContainer) return;
+        
+        const timeString = new Date(timestamp).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        
+        const formattedMessage = content.replace(/\n/g, '<br>');
+        
+        const aiMessage = document.createElement('div');
+        aiMessage.className = 'flex items-start gap-4 message-slide-in';
+        
+        aiMessage.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
+                <span class="material-icons text-2xl">psychology</span>
+            </div>
+            <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
+                <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${formattedMessage}</p>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timeString}</div>
+                <div class="message-reactions">
+                    <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')">
+                        <span class="material-icons" style="font-size: 14px;">thumb_up</span>
+                    </button>
+                    <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_down')">
+                        <span class="material-icons" style="font-size: 14px;">thumb_down</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        chatContainer.appendChild(aiMessage);
+        
+        if (quickReplies && quickReplies.length > 0) {
+            const quickReplyContainer = document.createElement('div');
+            quickReplyContainer.className = 'quick-replies';
+            
+            quickReplies.forEach(reply => {
+                const button = document.createElement('button');
+                button.className = 'quick-reply-btn';
+                button.textContent = reply;
+                button.onclick = () => handleQuickReply(reply);
+                quickReplyContainer.appendChild(button);
+            });
+            
+            chatContainer.appendChild(quickReplyContainer);
+        }
+    }
+    
+    groupChatsByDate() {
+        const grouped = {
+            'Today': [],
+            'Yesterday': [],
+            'This Week': [],
+            'This Month': [],
+            'Older': []
+        };
+        
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        Object.values(this.chats).forEach(chat => {
+            const chatDate = new Date(chat.lastActivity);
+            const chatDay = new Date(chatDate.getFullYear(), chatDate.getMonth(), chatDate.getDate());
+            
+            if (chatDay.getTime() === today.getTime()) {
+                grouped['Today'].push(chat);
+            } else if (chatDay.getTime() === yesterday.getTime()) {
+                grouped['Yesterday'].push(chat);
+            } else if (chatDate >= thisWeek) {
+                grouped['This Week'].push(chat);
+            } else if (chatDate >= thisMonth) {
+                grouped['This Month'].push(chat);
+            } else {
+                grouped['Older'].push(chat);
+            }
+        });
+        
+        Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+        });
+        
+        return grouped;
+    }
+    
+    renderChatHistory() {
+        const container = document.getElementById('chat-history-container');
+        if (!container) return;
+        
+        const grouped = this.groupChatsByDate();
+        container.innerHTML = '';
+        
+        Object.entries(grouped).forEach(([period, chats]) => {
+            if (chats.length === 0) return;
+            
+            const section = document.createElement('div');
+            section.className = 'chat-history-section';
+            
+            const header = document.createElement('button');
+            header.className = 'chat-history-header';
+            header.innerHTML = `
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${period}</span>
+                <span class="material-icons text-gray-400 transition-transform duration-200">keyboard_arrow_down</span>
+            `;
+            
+            const content = document.createElement('div');
+            content.className = 'chat-history-content';
+            
+            chats.forEach(chat => {
+                const chatItem = this.createChatItem(chat);
+                content.appendChild(chatItem);
+            });
+            
+            header.addEventListener('click', () => {
+                const isCollapsed = content.classList.contains('collapsed');
+                content.classList.toggle('collapsed');
+                const icon = header.querySelector('.material-icons');
+                icon.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(-180deg)';
+            });
+            
+            section.appendChild(header);
+            section.appendChild(content);
+            container.appendChild(section);
+        });
+    }
+    
+    createChatItem(chat) {
+        const item = document.createElement('div');
+        item.className = 'chat-history-item';
+        item.dataset.chatId = chat.id;
+        
+        const isActive = this.currentChatId === chat.id;
+        if (isActive) {
+            item.classList.add('active');
+        }
+        
+        item.innerHTML = `
+            <div class="chat-item-content" onclick="window.chatHistoryManager.switchToChat('${chat.id}')">
+                <div class="chat-title">${this.escapeHtml(chat.title)}</div>
+                <div class="chat-time">${this.formatRelativeTime(chat.lastActivity)}</div>
+            </div>
+            <div class="chat-actions">
+                <button class="chat-action-btn" onclick="window.chatHistoryManager.showRenameDialog('${chat.id}')" title="Rename">
+                    <span class="material-icons">edit</span>
+                </button>
+                <button class="chat-action-btn delete" onclick="window.chatHistoryManager.showDeleteDialog('${chat.id}')" title="Delete">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+        `;
+        
+        return item;
+    }
+    
+    showRenameDialog(chatId) {
+        const chat = this.chats[chatId];
+        if (!chat) return;
+        
+        const newTitle = prompt('Enter new chat title:', chat.title);
+        if (newTitle !== null) {
+            this.renameChat(chatId, newTitle);
+        }
+    }
+    
+    showDeleteDialog(chatId) {
+        const chat = this.chats[chatId];
+        if (!chat) return;
+        
+        if (confirm(`Are you sure you want to delete "${chat.title}"?`)) {
+            this.deleteChat(chatId);
+        }
+    }
+    
+    formatRelativeTime(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    bindEvents() {
+        const newChatBtn = document.getElementById('new-chat-btn');
+        if (newChatBtn) {
+            newChatBtn.removeEventListener('click', this.originalNewChatHandler);
+            this.originalNewChatHandler = () => {
+                this.createNewChat();
+                
+                const messageInput = document.getElementById('message-input');
+                if (messageInput) {
+                    messageInput.value = '';
+                    messageInput.focus();
+                }
+                
+                newChatBtn.classList.add('animate-pulse');
+                setTimeout(() => {
+                    newChatBtn.classList.remove('animate-pulse');
+                }, 1000);
+            };
+            newChatBtn.addEventListener('click', this.originalNewChatHandler);
+        }
+    }
+}
+
+window.chatHistoryManager = new ChatHistory();
