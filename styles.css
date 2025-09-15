@@ -554,7 +554,7 @@ button:hover {
   padding: 8px 12px;
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: var(--border-radius-lg);
+  border-radius: var(--radius-lg);
   font-size: var(--text-sm);
   cursor: pointer;
   transition: all var(--duration-fast) ease;
@@ -663,7 +663,7 @@ button:hover {
   
   .theme-btn {
     padding: var(--spacing-2) !important;
-    border-radius: 50% !important;
+    border-radius: var(--radius-xl) !important;
     width: var(--touch-target) !important;
     height: var(--touch-target) !important;
   }

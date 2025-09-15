@@ -27,6 +27,462 @@ const initializeUserPreferences = () => {
     }
 };
 
+// ===== Chat Sessions State & Helpers =====
+let chatSessions = [];
+let currentSessionId = null;
+let lastDeletedSessionCache = null; // for undo delete
+let searchQuery = '';
+
+const SESSIONS_KEY = 'chat_sessions_v1';
+const CURRENT_SESSION_KEY = 'current_session_id_v1';
+
+const loadSessions = () => {
+    try {
+        chatSessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]');
+        currentSessionId = localStorage.getItem(CURRENT_SESSION_KEY);
+    } catch (_) {
+        chatSessions = [];
+        currentSessionId = null;
+    }
+};
+
+const saveSessions = () => {
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(chatSessions));
+    if (currentSessionId) localStorage.setItem(CURRENT_SESSION_KEY, currentSessionId);
+};
+
+const createNewSession = (title = 'New Chat') => {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const nowIso = new Date().toISOString();
+    const session = { id, title, createdAt: nowIso, updatedAt: nowIso, messages: [], pinned: false, archived: false, tags: [] };
+    chatSessions.unshift(session);
+    currentSessionId = id;
+    saveSessions();
+    renderChatHistory();
+    return session;
+};
+
+const getCurrentSession = () => chatSessions.find(s => s.id === currentSessionId) || null;
+
+const setCurrentSession = (id) => {
+    if (!id) return;
+    currentSessionId = id;
+    saveSessions();
+    renderChatHistory();
+};
+
+const updateSessionTitleIfNeeded = (session, candidateTitle) => {
+    if (!session) return;
+    if (!session.title || session.title === 'New Chat') {
+        const t = (candidateTitle || '').trim().replace(/\s+/g, ' ');
+        if (t) {
+            session.title = t.slice(0, 40);
+            saveSessions();
+            renderChatHistory();
+        }
+    }
+};
+
+const addMessageToCurrentSession = (role, content, isoTime) => {
+    const session = getCurrentSession();
+    if (!session) return;
+    const time = isoTime || new Date().toISOString();
+    session.messages.push({ role, content, time });
+    session.updatedAt = time;
+    if (role === 'user') updateSessionTitleIfNeeded(session, content);
+    saveSessions();
+    renderChatHistory();
+};
+
+const deleteSession = (id) => {
+    const idx = chatSessions.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    lastDeletedSessionCache = chatSessions[idx];
+    chatSessions.splice(idx, 1);
+    if (currentSessionId === id) {
+        currentSessionId = chatSessions[0]?.id || null;
+    }
+    saveSessions();
+    renderChatHistory();
+    showUndoToast();
+};
+
+const renameSession = (id, newTitle) => {
+    const s = chatSessions.find(x => x.id === id);
+    if (!s) return;
+    const t = (newTitle || '').trim();
+    if (!t) return;
+    s.title = t.slice(0, 60);
+    saveSessions();
+    renderChatHistory();
+};
+
+const pinSession = (id, pinned) => {
+    const s = chatSessions.find(x => x.id === id);
+    if (!s) return;
+    s.pinned = !!pinned;
+    saveSessions();
+    renderChatHistory();
+};
+
+const archiveSession = (id, archived) => {
+    const s = chatSessions.find(x => x.id === id);
+    if (!s) return;
+    s.archived = !!archived;
+    // If archiving current session, keep it open but it will appear under Archived
+    saveSessions();
+    renderChatHistory();
+};
+
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const renderChatHistory = () => {
+    const todayList = document.getElementById('today-list');
+    const yesterdayList = document.getElementById('yesterday-list');
+    const previousList = document.getElementById('previous-list');
+    const previous30List = document.getElementById('previous30-list');
+    const olderList = document.getElementById('older-list');
+    const pinnedList = document.getElementById('pinned-list');
+    const archivedList = document.getElementById('archived-list');
+    if (!todayList || !yesterdayList || !previousList) return;
+
+    todayList.innerHTML = '';
+    yesterdayList.innerHTML = '';
+    previousList.innerHTML = '';
+    if (previous30List) previous30List.innerHTML = '';
+    if (olderList) olderList.innerHTML = '';
+    if (pinnedList) pinnedList.innerHTML = '';
+    if (archivedList) archivedList.innerHTML = '';
+
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+
+    const normalizedQuery = (searchQuery || '').trim().toLowerCase();
+    const filtered = chatSessions.filter(session => {
+        if (session.archived) return true; // still render under archived
+        if (!normalizedQuery) return true;
+        const haystack = [session.title, ...(session.tags || [])].join(' ').toLowerCase();
+        return haystack.includes(normalizedQuery);
+    });
+
+    // Pinned first (in pinned section), then others in date groups
+    filtered.forEach(session => {
+        const updated = new Date(session.updatedAt || session.createdAt);
+        // Search filter: skip non-archived that don't match
+        if (!session.archived && normalizedQuery) {
+            const hay = [session.title, ...(session.tags || [])].join(' ').toLowerCase();
+            if (!hay.includes(normalizedQuery)) return;
+        }
+
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between group';
+
+        const isActive = session.id === currentSessionId;
+        const baseClasses = 'block p-3 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]';
+        const textClasses = isActive
+            ? 'bg-[var(--bg-tertiary)] dark:bg-[var(--accent-color)]/20 text-gray-900 dark:text-[var(--accent-color)] font-medium border-l-4 border-[var(--accent-color)]'
+            : 'text-gray-600 dark:text-[var(--text-secondary)]';
+
+        const titleText = session.title || 'New Chat';
+        const openLink = document.createElement('a');
+        openLink.href = '#';
+        openLink.className = `${baseClasses} ${textClasses} flex-1 truncate`;
+        openLink.title = `${titleText}`;
+        openLink.textContent = titleText;
+        openLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            openSession(session.id);
+        });
+
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2';
+
+        // Inline rename (turns title into input)
+        const makeInlineRename = () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = session.title || '';
+            input.className = `${baseClasses} ${textClasses} flex-1 truncate bg-transparent border border-[var(--border-color)]`;
+            input.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') {
+                    renameSession(session.id, input.value);
+                } else if (ev.key === 'Escape') {
+                    renderChatHistory();
+                }
+            });
+            input.addEventListener('blur', () => renameSession(session.id, input.value));
+            item.replaceChild(input, openLink);
+            input.focus();
+            input.select();
+        };
+
+        const pinBtn = document.createElement('button');
+        pinBtn.className = 'w-6 h-6 flex items-center justify-center rounded-full text-gray-500 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]';
+        pinBtn.title = session.pinned ? 'Unpin' : 'Pin';
+        pinBtn.innerHTML = `<span class="material-icons" style="font-size:16px;">${session.pinned ? 'push_pin' : 'push_pin'}</span>`;
+        pinBtn.style.transform = session.pinned ? 'rotate(45deg)' : '';
+        pinBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); e.preventDefault();
+            pinSession(session.id, !session.pinned);
+        });
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'w-6 h-6 flex items-center justify-center rounded-full text-gray-500 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]';
+        renameBtn.title = 'Rename';
+        renameBtn.innerHTML = '<span class="material-icons" style="font-size:16px;">edit</span>';
+        renameBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            makeInlineRename();
+        });
+
+        const archiveBtn = document.createElement('button');
+        archiveBtn.className = 'w-6 h-6 flex items-center justify-center rounded-full text-gray-500 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]';
+        archiveBtn.title = session.archived ? 'Unarchive' : 'Archive';
+        archiveBtn.innerHTML = `<span class="material-icons" style="font-size:16px;">inventory_2</span>`;
+        archiveBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); e.preventDefault();
+            archiveSession(session.id, !session.archived);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'w-6 h-6 flex items-center justify-center rounded-full text-gray-500 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]';
+        delBtn.title = 'Delete';
+        delBtn.innerHTML = '<span class="material-icons" style="font-size:16px;">delete</span>';
+        delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (confirm('Delete this chat?')) deleteSession(session.id);
+        });
+
+        actions.appendChild(pinBtn);
+        actions.appendChild(renameBtn);
+        actions.appendChild(archiveBtn);
+        actions.appendChild(delBtn);
+        item.appendChild(openLink);
+        item.appendChild(actions);
+        // Always show archived in archivedList if present
+        if (session.archived && archivedList) {
+            archivedList.appendChild(item);
+            return;
+        }
+
+        if (session.pinned && pinnedList) {
+            pinnedList.appendChild(item);
+            return;
+        }
+
+        if (sameDay(updated, now)) {
+            todayList.appendChild(item);
+        } else if (sameDay(updated, yesterday)) {
+            yesterdayList.appendChild(item);
+        } else if (updated >= sevenDaysAgo) {
+            previousList.appendChild(item);
+        } else if (updated >= thirtyDaysAgo) {
+            if (previous30List) previous30List.appendChild(item);
+        } else {
+            if (olderList) olderList.appendChild(item);
+        }
+    });
+};
+
+const openSession = (id) => {
+    const session = chatSessions.find(s => s.id === id);
+    if (!session) return;
+    setCurrentSession(id);
+    // Render messages from session
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                          document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                          document.querySelector('.flex-1.overflow-y-auto');
+    if (!chatContainer) return;
+    chatContainer.innerHTML = '';
+    // Virtualized rendering for long chats
+    renderVirtualizedMessages(session.messages);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+};
+
+// Simple windowed virtualization: render a moving window of messages based on scroll
+let virtualization = { start: 0, end: 0, chunk: 50, buffer: 20 };
+
+const renderVirtualizedMessages = (msgs) => {
+    const container = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                      document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                      document.querySelector('.flex-1.overflow-y-auto');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const total = msgs.length;
+    if (total <= virtualization.chunk + virtualization.buffer) {
+        msgs.forEach(m => m.role === 'user' ? renderUserMessage(m.content, m.time) : renderAIMessage(m.content, m.time));
+        return;
+    }
+
+    // Initial window: last chunk
+    virtualization.end = total;
+    virtualization.start = Math.max(0, total - virtualization.chunk);
+    paintVirtualWindow(msgs);
+
+    // Attach scroll listener once per open
+    container.onscroll = () => {
+        const nearTop = container.scrollTop < 100;
+        const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        if (nearTop && virtualization.start > 0) {
+            const add = virtualization.chunk;
+            virtualization.start = Math.max(0, virtualization.start - add);
+            paintVirtualWindow(msgs, true); // prepend
+        } else if (nearBottom && virtualization.end < total) {
+            const add = virtualization.chunk;
+            virtualization.end = Math.min(total, virtualization.end + add);
+            paintVirtualWindow(msgs, false); // append
+        }
+    };
+};
+
+const paintVirtualWindow = (msgs, prepend = false) => {
+    const container = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                      document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                      document.querySelector('.flex-1.overflow-y-auto');
+    if (!container) return;
+    const slice = msgs.slice(virtualization.start, virtualization.end);
+    const frag = document.createDocumentFragment();
+    slice.forEach(m => {
+        const wrapper = document.createElement('div');
+        if (m.role === 'user') {
+            // reuse renderer but into a temp wrapper to get DOM nodes
+            wrapper.innerHTML = `
+                <div class="flex items-start justify-end gap-4 message-slide-in">
+                    <div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
+                        <p style="white-space: pre-wrap;">${(m.content || '').replace(/\n/g, '<br>')}</p>
+                        <div class="text-xs text-white/70 mt-2 text-right">${formatTime(m.time)}</div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
+                        <span class="material-icons text-2xl">person</span>
+                    </div>
+                </div>`;
+        } else {
+            wrapper.innerHTML = `
+                <div class="flex items-start gap-4 message-slide-in">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
+                        <span class="material-icons text-2xl">psychology</span>
+                    </div>
+                    <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
+                        <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${(m.content || '').replace(/\n/g, '<br>')}</p>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${formatTime(m.time)}</div>
+                        <div class="message-reactions">
+                            <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')"><span class="material-icons" style="font-size: 14px;">thumb_up</span></button>
+                            <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_down')"><span class="material-icons" style="font-size: 14px;">thumb_down</span></button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        Array.from(wrapper.childNodes).forEach(n => frag.appendChild(n));
+    });
+    if (prepend) {
+        container.prepend(frag);
+    } else {
+        container.append(frag);
+    }
+};
+
+const formatTime = (iso) => {
+    try {
+        const d = iso ? new Date(iso) : new Date();
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch { return ''; }
+};
+
+const renderUserMessage = (message, iso) => {
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    if (!chatContainer) return;
+
+    const timestamp = formatTime(iso);
+    const formattedMessage = (message || '').replace(/\n/g, '<br>');
+    const userMessage = document.createElement('div');
+    userMessage.className = 'flex items-start justify-end gap-4 message-slide-in';
+    userMessage.innerHTML = `
+        <div class="bg-[var(--accent-color)] text-white rounded-2xl p-3 max-w-md order-1">
+            <p style="white-space: pre-wrap;">${formattedMessage}</p>
+            <div class="text-xs text-white/70 mt-2 text-right">${timestamp}</div>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-[var(--accent-color)] flex items-center justify-center text-white font-bold shrink-0">
+            <span class="material-icons text-2xl">person</span>
+        </div>
+    `;
+    chatContainer.appendChild(userMessage);
+};
+
+const renderAIMessage = (message, iso) => {
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    if (!chatContainer) return;
+
+    const timestamp = formatTime(iso);
+    const formatted = (message || '').replace(/\n/g, '<br>');
+    const aiMessage = document.createElement('div');
+    aiMessage.className = 'flex items-start gap-4 message-slide-in';
+    aiMessage.innerHTML = `
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
+            <span class="material-icons text-2xl">psychology</span>
+        </div>
+        <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
+            <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${formatted}</p>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${timestamp}</div>
+            <div class="message-reactions">
+                <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')">
+                    <span class="material-icons" style="font-size: 14px;">thumb_up</span>
+                </button>
+                <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_down')">
+                    <span class="material-icons" style="font-size: 14px;">thumb_down</span>
+                </button>
+            </div>
+        </div>
+    `;
+    chatContainer.appendChild(aiMessage);
+};
+
+const bootstrapInitialSessionIfNeeded = () => {
+    loadSessions();
+    if (chatSessions.length > 0) {
+        renderChatHistory();
+        return;
+    }
+    // Capture existing DOM messages as the first session
+    const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                         document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                         document.querySelector('.flex-1.overflow-y-auto');
+    const messages = [];
+    if (chatContainer) {
+        const nodes = chatContainer.querySelectorAll('.message-slide-in, .animate-fade-in');
+        nodes.forEach(el => {
+            const textEl = el.querySelector('p');
+            if (!textEl) return;
+            // Determine user vs AI by bubble color
+            const isUser = !!el.querySelector('.bg-\\[var\\(--accent-color\\)\\]');
+            messages.push({
+                role: isUser ? 'user' : 'ai',
+                content: textEl.innerHTML.replace(/<br\s*\/?>(?=\n?)/g, '\n')
+                    .replace(/\n\n/g, '\n')
+                    .replace(/<[^>]*>/g, '') // strip tags for storage
+                    ,
+                time: new Date().toISOString()
+            });
+        });
+    }
+    const session = createNewSession('Welcome');
+    session.messages = messages;
+    session.updatedAt = new Date().toISOString();
+    saveSessions();
+    renderChatHistory();
+};
+
 const toggleTheme = () => {
     const html = document.documentElement;
     const themeIcon = document.getElementById('theme-icon');
@@ -317,7 +773,8 @@ const initializeNewChat = () => {
     
     newChatBtn.addEventListener('click', () => {
         console.log('Starting new chat...');
-        
+        // Create and switch to a brand new session
+        createNewSession('New Chat');
         clearChatAndShowWelcome();
         
         const messageInput = document.getElementById('message-input');
@@ -372,6 +829,9 @@ const clearChatAndShowWelcome = () => {
     
     chatContainer.appendChild(welcomeMessage);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Persist welcome AI message to the current session
+    addMessageToCurrentSession('ai', randomMessage.replace(/<br\s*\/?>(?=\n?)/g, '\n'));
 };
 
 const addUserMessage = (message) => {
@@ -404,6 +864,9 @@ const addUserMessage = (message) => {
     
     chatContainer.appendChild(userMessage);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Persist user message
+    addMessageToCurrentSession('user', message);
 };
 
 const showTypingIndicator = () => {
@@ -497,6 +960,194 @@ const addAIResponse = (userMessage) => {
     }
     
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Persist AI response
+    addMessageToCurrentSession('ai', aiResponse);
+};
+
+// Search filtering
+const initializeSearch = () => {
+    const search = document.getElementById('search-input');
+    if (!search) return;
+    const handle = () => {
+        searchQuery = search.value || '';
+        renderChatHistory();
+    };
+    search.addEventListener('input', handle);
+};
+
+// Keyboard shortcuts
+const initializeShortcuts = () => {
+    document.addEventListener('keydown', (e) => {
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            const search = document.getElementById('search-input');
+            if (search) search.focus();
+        } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            const btn = document.getElementById('new-chat-btn');
+            if (btn) btn.click();
+        } else if (e.key === 'Escape') {
+            // Close mobile sidebar if open
+            if (sidebar && sidebar.classList.contains('mobile-open')) closeMobileSidebar();
+        }
+    });
+};
+
+// Undo toast
+let undoToastTimer = null;
+const showUndoToast = () => {
+    // Create minimal toast without altering layout; disappears after a few seconds
+    const existing = document.getElementById('undo-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'undo-toast';
+    toast.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white dark:bg-[var(--bg-tertiary)] dark:text-[var(--text-primary)] rounded-lg px-4 py-2 shadow-lg z-[10000]';
+    toast.innerHTML = 'Chat deleted. <button id="undo-btn" class="underline ml-2">Undo</button>';
+    document.body.appendChild(toast);
+    const undoBtn = document.getElementById('undo-btn');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            if (lastDeletedSessionCache) {
+                chatSessions.unshift(lastDeletedSessionCache);
+                currentSessionId = lastDeletedSessionCache.id;
+                lastDeletedSessionCache = null;
+                saveSessions();
+                renderChatHistory();
+            }
+            toast.remove();
+            if (undoToastTimer) clearTimeout(undoToastTimer);
+        });
+    }
+    if (undoToastTimer) clearTimeout(undoToastTimer);
+    undoToastTimer = setTimeout(() => toast.remove(), 5000);
+};
+
+// Export formats
+const exportConversationAs = (format) => {
+    const session = getCurrentSession();
+    if (!session) return;
+    const filenameBase = `conversation-${new Date().toISOString().split('T')[0]}`;
+    if (format === 'txt' || format === 'md') {
+        let out = '';
+        session.messages.forEach(m => {
+            const time = formatTime(m.time);
+            const sender = m.role === 'user' ? 'You' : 'AI Assistant';
+            const msg = m.content;
+            if (format === 'md') {
+                out += `- [${time}] **${sender}**: ${msg}\n`;
+            } else {
+                out += `[${time}] ${sender}: ${msg}\n\n`;
+            }
+        });
+        const blob = new Blob([out], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${filenameBase}.${format}`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        return;
+    }
+    if (format === 'json') {
+        const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${filenameBase}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        return;
+    }
+    if (format === 'pdf') {
+        // Lightweight PDF via print; generates a printable window and triggers print-to-PDF
+        const w = window.open('', '_blank');
+        if (!w) return;
+        const html = `<!DOCTYPE html><html><head><title>${filenameBase}</title>
+            <meta charset="utf-8"/></head><body style="font-family: Arial, sans-serif; padding: 24px;">
+            <h2>${session.title || 'Conversation'}</h2>
+            <div>` + session.messages.map(m => {
+                const sender = m.role === 'user' ? 'You' : 'AI Assistant';
+                return `<p><strong>[${formatTime(m.time)}] ${sender}:</strong> ${
+                    (m.content || '').replace(/\n/g, '<br>')
+                }</p>`;
+            }).join('') + `</div></body></html>`;
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        w.print();
+        return;
+    }
+};
+
+// Export dropdown menu (replaces prompt UX)
+let exportMenuEl = null;
+let exportMenuOpen = false;
+
+const buildExportMenu = () => {
+    if (exportMenuEl) return exportMenuEl;
+    const menu = document.createElement('div');
+    menu.id = 'export-menu';
+    menu.className = 'absolute bg-white dark:bg-[var(--bg-secondary)] border border-gray-200 dark:border-[var(--border-color)] rounded-lg shadow-lg py-1 z-[10000]';
+    menu.style.minWidth = '160px';
+    const mkItem = (label, fmt) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-100 dark:hover:bg-[var(--bg-tertiary)]';
+        btn.textContent = label;
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            hideExportMenu();
+            exportConversationAs(fmt);
+        });
+        return btn;
+    };
+    menu.appendChild(mkItem('TXT (.txt)', 'txt'));
+    menu.appendChild(mkItem('Markdown (.md)', 'md'));
+    menu.appendChild(mkItem('JSON (.json)', 'json'));
+    menu.appendChild(mkItem('PDF (.pdf)', 'pdf'));
+    document.body.appendChild(menu);
+    exportMenuEl = menu;
+    return menu;
+};
+
+const showExportMenu = (anchorBtn) => {
+    const menu = buildExportMenu();
+    const rect = anchorBtn.getBoundingClientRect();
+    const top = window.scrollY + rect.bottom + 8; // below button
+    const left = Math.min(window.scrollX + rect.left, window.scrollX + window.innerWidth - 180);
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+    menu.style.display = 'block';
+    exportMenuOpen = true;
+    setTimeout(() => {
+        document.addEventListener('click', handleExportOutsideClick, { once: true });
+    }, 0);
+};
+
+const hideExportMenu = () => {
+    if (exportMenuEl) exportMenuEl.style.display = 'none';
+    exportMenuOpen = false;
+};
+
+const handleExportOutsideClick = (e) => {
+    if (!exportMenuEl) return;
+    if (!exportMenuEl.contains(e.target)) hideExportMenu();
+};
+
+const toggleExportMenu = (btn) => {
+    if (exportMenuOpen) hideExportMenu(); else showExportMenu(btn);
+};
+
+const initializeExportMenu = () => {
+    const btn = document.querySelector('button[onclick="exportConversation()"]');
+    if (!btn) return;
+    // Remove old inline handler to avoid double actions
+    btn.removeAttribute('onclick');
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleExportMenu(btn);
+    });
+    window.addEventListener('resize', hideExportMenu);
+    window.addEventListener('scroll', hideExportMenu, { passive: true });
 };
 
 const generateAIResponse = (userMessage) => {
@@ -777,6 +1428,11 @@ document.addEventListener('DOMContentLoaded', () => {
     autoResizeTextarea();
     initializeNewChat();
     loadProgress();
+    bootstrapInitialSessionIfNeeded();
+    renderChatHistory();
+    initializeSearch();
+    initializeShortcuts();
+    initializeExportMenu();
     
     trackProgress('conversation_started');
     

@@ -31,14 +31,20 @@
 <nav class="space-y-2 flex-1 overflow-y-auto px-4 pb-4 pt-4 transition-opacity duration-300" id="sidebar-nav">
 <div>
 <button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Pinned</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2 hidden" id="pinned-list"></div>
+</div>
+
+<div class="history-divider"></div>
+
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
 <span>Today</span>
 <span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
 </button>
-<div class="pl-4 mt-2 space-y-2">
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Mental Health Check-in</a>
-<a class="block p-3 rounded-lg text-sm bg-[var(--bg-tertiary)] dark:bg-[var(--accent-color)]/20 text-gray-900 dark:text-[var(--accent-color)] font-medium border-l-4 border-[var(--accent-color)]" href="#">Study Stress Support</a>
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Anxiety Management</a>
-</div>
+<div class="pl-4 mt-2 space-y-2" id="today-list"></div>
 </div>
 
 <div class="history-divider"></div>
@@ -47,10 +53,7 @@
 <span>Yesterday</span>
 <span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
 </button>
-<div class="pl-4 mt-2 space-y-2 hidden">
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Exam Preparation Help</a>
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Sleep Schedule Discussion</a>
-</div>
+<div class="pl-4 mt-2 space-y-2 hidden" id="yesterday-list"></div>
 </div>
 
 <div class="history-divider"></div>
@@ -59,11 +62,34 @@
 <span>Previous 7 Days</span>
 <span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
 </button>
-<div class="pl-4 mt-2 space-y-2 hidden">
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Social Anxiety Support</a>
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Academic Pressure</a>
-<a class="block p-3 rounded-lg text-sm text-gray-600 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]" href="#">Mindfulness Techniques</a>
+<div class="pl-4 mt-2 space-y-2 hidden" id="previous-list"></div>
 </div>
+
+<div class="history-divider"></div>
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Previous 30 Days</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2 hidden" id="previous30-list"></div>
+</div>
+
+<div class="history-divider"></div>
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Older</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2 hidden" id="older-list"></div>
+</div>
+
+<div class="history-divider"></div>
+<div>
+<button class="w-full text-left flex justify-between items-center p-3 rounded-lg text-gray-700 dark:text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--bg-tertiary)]">
+<span>Archived</span>
+<span class="material-icons transform transition-transform duration-200">keyboard_arrow_down</span>
+</button>
+<div class="pl-4 mt-2 space-y-2 hidden" id="archived-list"></div>
 </div>
 </nav>
 </aside>
