@@ -32,6 +32,60 @@ let chatSessions = [];
 let currentSessionId = null;
 let lastDeletedSessionCache = null; // for undo delete
 let searchQuery = '';
+// When true, after pressing New Chat, selecting a theme should create a NEW session for that theme
+let freshModeActive = false;
+
+// Centralized welcome texts per theme
+const THEME_WELCOME_TEXT = {
+    general: "Hi 👋 I’m here for anything on your mind. How can I support you today?",
+    stress: "Take a breath 🌿 We can handle study stress together. What’s stressing you the most right now?",
+    anxiety: "You’re safe here 💛 Anxiety can feel heavy. Want grounding tips or to share what’s been making you anxious?",
+    relationships: "Relationships can be tricky 🤝 I’m here to listen and help with clear next steps. What’s going on?",
+    depression: "Thanks for reaching out 💙 Small steps count. How have you been feeling lately?"
+};
+
+const THEME_TITLES = {
+    general: 'General Chat',
+    stress: 'Study Stress',
+    anxiety: 'Anxiety Support',
+    relationships: 'Relationships',
+    depression: 'Mood Support'
+};
+
+const isWelcomeText = (text) => {
+    const t = String(text || '');
+    return Object.values(THEME_WELCOME_TEXT).includes(t);
+};
+
+const getOrCreateThemeSession = (theme) => {
+    const t = (theme || 'general').toLowerCase();
+    // Find the most recent non-archived session for this theme
+    let s = chatSessions.find(x => x.theme === t && !x.archived);
+    if (s) return s;
+    // Create a new session for this theme with a welcome
+    const title = THEME_TITLES[t] || 'New Chat';
+    s = createNewSession(title);
+    s.theme = t;
+    // Ensure we're pointing at the new themed session BEFORE adding welcome
+    setCurrentSession(s.id);
+    const welcome = THEME_WELCOME_TEXT[t];
+    if (welcome) {
+        addMessageToCurrentSession('ai', welcome);
+    }
+    return s;
+};
+
+// Force-create a brand-new session for the given theme (used in fresh mode after New Chat)
+const createNewThemeSession = (theme) => {
+    const t = (theme || 'general').toLowerCase();
+    const title = THEME_TITLES[t] || 'New Chat';
+    const s = createNewSession(title);
+    s.theme = t;
+    setCurrentSession(s.id);
+    const welcome = THEME_WELCOME_TEXT[t];
+    if (welcome) addMessageToCurrentSession('ai', welcome);
+    return s;
+};
 
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
@@ -309,6 +363,17 @@ const openSession = (id) => {
 // Simple windowed virtualization: render a moving window of messages based on scroll
 let virtualization = { start: 0, end: 0, chunk: 50, buffer: 20 };
 
+// Shared sanitizer for AI markdown-like markers
+const sanitizeMd = (s) => {
+    if (!s) return '';
+    return String(s)
+        .replace(/\*\*(.*?)\*\*/g, '$1') // bold
+        .replace(/\*(.*?)\*/g, '$1')     // italics
+        .replace(/`([^`]+)`/g, '$1')      // inline code
+        .replace(/^\s*[-*]\s+/gm, '• ')  // bullets to a simple dot
+        ;
+};
+
 const renderVirtualizedMessages = (msgs) => {
     const container = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
                       document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
@@ -352,7 +417,7 @@ const paintVirtualWindow = (msgs, prepend = false) => {
     const frag = document.createDocumentFragment();
     slice.forEach(m => {
         const wrapper = document.createElement('div');
-        if (m.role === 'user') {
+    if (m.role === 'user') {
             // reuse renderer but into a temp wrapper to get DOM nodes
             wrapper.innerHTML = `
                 <div class="flex items-start justify-end gap-4 message-slide-in">
@@ -371,7 +436,7 @@ const paintVirtualWindow = (msgs, prepend = false) => {
                         <span class="material-icons text-2xl">psychology</span>
                     </div>
                     <div class="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-[var(--bg-secondary)] dark:to-[var(--bg-tertiary)] border border-violet-100 dark:border-[var(--border-color)] rounded-2xl p-3 max-w-md shadow-sm message-bubble">
-                        <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${(m.content || '').replace(/\n/g, '<br>')}</p>
+                        <p class="text-gray-800 dark:text-[var(--text-primary)] leading-relaxed" style="white-space: pre-wrap;">${sanitizeMd(m.content || '').replace(/\n/g, '<br>')}</p>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">${formatTime(m.time)}</div>
                         <div class="message-reactions">
                             <button class="reaction-btn" onclick="handleReaction(this, 'thumbs_up')"><span class="material-icons" style="font-size: 14px;">thumb_up</span></button>
@@ -425,7 +490,7 @@ const renderAIMessage = (message, iso) => {
     if (!chatContainer) return;
 
     const timestamp = formatTime(iso);
-    const formatted = (message || '').replace(/\n/g, '<br>');
+    const formatted = sanitizeMd(message).replace(/\n/g, '<br>');
     const aiMessage = document.createElement('div');
     aiMessage.className = 'flex items-start gap-4 message-slide-in';
     aiMessage.innerHTML = `
@@ -774,9 +839,27 @@ const initializeNewChat = () => {
     
     newChatBtn.addEventListener('click', () => {
         console.log('Starting new chat...');
-        // Create and switch to a brand new session
-        createNewSession('New Chat');
-        clearChatAndShowWelcome();
+        // Enter fresh mode: next theme selections create brand-new sessions per theme
+        freshModeActive = true;
+        // Create and switch to a brand new General-themed session
+        const s = createNewSession(THEME_TITLES.general || 'New Chat');
+        s.theme = 'general';
+        saveSessions();
+        // Reset the chat area to the new (empty) session
+        if (typeof openSession === 'function' && s && s.id) {
+            openSession(s.id);
+        } else {
+            const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
+                                  document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
+                                  document.querySelector('.flex-1.overflow-y-auto');
+            if (chatContainer) chatContainer.innerHTML = '';
+        }
+        // Mark General as selected and show its welcome (session is empty)
+        currentTheme = 'general';
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        const generalBtn = document.querySelector('.theme-btn[data-theme="general"]');
+        if (generalBtn) generalBtn.classList.add('active');
+        showThemeWelcomeMessage('general');
         
         const messageInput = document.getElementById('message-input');
         if (messageInput) {
@@ -868,6 +951,8 @@ const addUserMessage = (message) => {
 
     // Persist user message
     addMessageToCurrentSession('user', message);
+    // Exit fresh mode once the user starts chatting
+    freshModeActive = false;
 };
 
 const showTypingIndicator = () => {
@@ -1020,8 +1105,8 @@ const addAIResponse = async (userMessage) => {
     }
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    // Persist AI response
-    addMessageToCurrentSession('ai', aiResponse);
+    // Persist AI response (sanitized)
+    addMessageToCurrentSession('ai', sanitizeMd(aiResponse));
 };
 
 // Search filtering
@@ -1321,36 +1406,45 @@ const toggleThemeSelector = () => {
 };
 
 const selectTheme = (theme) => {
+    const currentSession = getCurrentSession();
+    const currentThemeOfSession = currentSession?.theme;
     currentTheme = theme;
-    
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelector(`[data-theme="${theme}"]`).classList.add('active');
-    
-    document.getElementById('theme-selector').classList.add('hidden');
-    document.getElementById('theme-toggle-text').textContent = 'Show themes';
-    
-    showThemeWelcomeMessage(theme);
-    
-    trackProgress('theme_selected', { theme: theme });
+    // Update UI state
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+    const btn = document.querySelector(`[data-theme="${theme}"]`);
+    if (btn) btn.classList.add('active');
+    const selector = document.getElementById('theme-selector');
+    if (selector) selector.classList.add('hidden');
+    const toggleText = document.getElementById('theme-toggle-text');
+    if (toggleText) toggleText.textContent = 'Show themes';
+
+    let s;
+    if (freshModeActive) {
+        // In fresh mode, create a brand-new session when switching to a different theme
+        if (!currentSession || currentThemeOfSession !== theme) {
+            s = createNewThemeSession(theme);
+        } else {
+            // Already in the same theme's fresh session
+            s = currentSession;
+        }
+    } else {
+        // Normal behavior: resume existing or create one if missing (with welcome)
+        s = getOrCreateThemeSession(theme);
+    }
+
+    if (s && s.id) openSession(s.id);
+
+    trackProgress('theme_selected', { theme });
 };
 
-const showThemeWelcomeMessage = (theme) => {
-    const messages = {
-        general: "I'm here to chat about anything that's on your mind. How can I support you today?",
-        stress: "Let's talk about managing study stress together. Remember, it's normal to feel overwhelmed sometimes. What's been causing you the most stress lately?",
-        anxiety: "You're in a safe space here. Anxiety can feel overwhelming, but you're not alone. Would you like to talk about what's been making you feel anxious, or would you prefer some calming techniques?",
-        relationships: "Relationships can be complex, especially during university years. Whether it's friendships, family, or romantic relationships, I'm here to listen and help you work through any challenges.",
-        depression: "Thank you for being here. It takes strength to reach out when you're struggling with your mood. I'm here to support you through this. How have you been feeling lately?"
-    };
+const showThemeWelcomeMessage = (theme, options = {}) => {
+    const messages = THEME_WELCOME_TEXT;
     
     const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
                          document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
                          document.querySelector('.flex-1.overflow-y-auto');
     if (!chatContainer) return;
-    
-    chatContainer.innerHTML = '';
+    // Do NOT clear existing chat history. Only append welcome when session is empty.
     
     const timestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
@@ -1393,6 +1487,20 @@ const showThemeWelcomeMessage = (theme) => {
     }
     
     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Persist the theme welcome according to mode
+    try {
+        const s = getCurrentSession();
+        const plain = messages[theme] || '';
+        const count = (s && Array.isArray(s.messages)) ? s.messages.length : 0;
+        if (!plain) return;
+        const mode = options.persistMode || 'empty-only';
+        if (mode === 'always') {
+            addMessageToCurrentSession('ai', plain);
+        } else if (count === 0) {
+            addMessageToCurrentSession('ai', plain);
+        }
+    } catch {}
 };
 
 const getThemeQuickReplies = (theme) => {
@@ -1493,6 +1601,18 @@ const exportConversation = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    const ensureDefaultThemeOnLoad = () => {
+        // Set General as the default selected theme without clearing messages
+        currentTheme = 'general';
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        const generalBtn = document.querySelector('.theme-btn[data-theme="general"]');
+        if (generalBtn) generalBtn.classList.add('active');
+        const sel = document.getElementById('theme-selector');
+        if (sel) sel.classList.add('hidden');
+        const toggleText = document.getElementById('theme-toggle-text');
+        if (toggleText) toggleText.textContent = 'Show themes';
+    };
+
     handleResize();
     initializeHistoryAccordion();
     autoResizeTextarea();
@@ -1503,6 +1623,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSearch();
     initializeShortcuts();
     initializeExportMenu();
+    ensureDefaultThemeOnLoad();
     
     trackProgress('conversation_started');
     

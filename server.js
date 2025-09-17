@@ -42,17 +42,20 @@ You are Saathi for mood support. Be warm and strengths-based.
 };
 
 function getSystemInstruction(theme) {
+  const PLAIN_TEXT_RULE = `\nOutput format: Use plain text only. Avoid Markdown formatting (no **bold**, lists, or code blocks). If listing steps, write short lines starting with a dash.`;
   const key = String(theme || 'general').toLowerCase();
+  let base;
   switch (key) {
-    case 'general': return THEME_GUIDANCE.general;
-    case 'stress': return THEME_GUIDANCE.stress;
-    case 'anxiety': return THEME_GUIDANCE.anxiety;
-    case 'relationships': return THEME_GUIDANCE.relationships;
+    case 'general': base = THEME_GUIDANCE.general; break;
+    case 'stress': base = THEME_GUIDANCE.stress; break;
+    case 'anxiety': base = THEME_GUIDANCE.anxiety; break;
+    case 'relationships': base = THEME_GUIDANCE.relationships; break;
     case 'depression':
     case 'mood':
-    case 'mood support': return THEME_GUIDANCE.depression;
-    default: return THEME_GUIDANCE.general;
+    case 'mood support': base = THEME_GUIDANCE.depression; break;
+    default: base = THEME_GUIDANCE.general; break;
   }
+  return base + PLAIN_TEXT_RULE;
 }
 
 function toGeminiHistory(messages = []) {
