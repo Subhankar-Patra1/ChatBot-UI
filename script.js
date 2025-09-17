@@ -743,17 +743,18 @@ const autoResizeTextarea = () => {
         }
     };
     
-    const sendMessage = () => {
+    const sendMessage = async () => {
         const message = messageInput.value.trim();
         if (message) {
             addUserMessage(message);
             messageInput.value = '';
             handleInput();
             showTypingIndicator();
-            setTimeout(() => {
+            try {
+                await addAIResponse(message);
+            } finally {
                 hideTypingIndicator();
-                addAIResponse(message);
-            }, 2000);
+            }
         }
     };
     
@@ -903,27 +904,87 @@ const hideTypingIndicator = () => {
     }
 };
 
-const addAIResponse = (userMessage) => {
+// ===== Gemini Integration =====
+// Environment-aware API base with override support via URL (?api=...) or localStorage
+const API_STORAGE_KEY = 'saathi_api_base';
+
+function getApiBase() {
+    try {
+        // 1) URL override (?api=https://your-api)
+        const url = new URL(window.location.href);
+        const apiParam = url.searchParams.get('api');
+        if (apiParam) {
+            localStorage.setItem(API_STORAGE_KEY, apiParam);
+            return apiParam;
+        }
+        // 2) Persisted override
+        const stored = localStorage.getItem(API_STORAGE_KEY);
+        if (stored) return stored;
+        // 3) Default: localhost in dev
+        const host = window.location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000';
+        // 4) No API configured in production (e.g., GitHub Pages). Return empty to trigger mock fallback.
+        return '';
+    } catch {
+        return '';
+    }
+}
+
+async function callGemini(messages, theme) {
+    try {
+        const base = getApiBase();
+        if (!base) {
+            console.warn('[Saathi] No API endpoint configured. Using local fallback. Add ?api=https://your-api or set localStorage saathi_api_base');
+            return null;
+        }
+        const res = await fetch(`${base}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme: theme || currentTheme || 'general', messages })
+        });
+        if (!res.ok) throw new Error('Network error');
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'AI error');
+        return data.text || '';
+    } catch (e) {
+        console.error('AI request failed, using local fallback:', e);
+        return null; // fallback to local heuristic
+    }
+}
+
+const addAIResponse = async (userMessage) => {
     const chatContainer = document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-4.chat-container') || 
                          document.querySelector('.flex-1.overflow-y-auto.p-6.space-y-6') ||
                          document.querySelector('.flex-1.overflow-y-auto');
     if (!chatContainer) return;
-    
+
+    // Prepare history (use current session messages for better context)
+    const session = getCurrentSession();
+    const all = (session?.messages || []).map(m => ({ role: m.role, content: m.content }));
+    // Keep only the most recent messages to reduce payload
+    const msgs = all.slice(-24).map(m => ({
+        role: m.role,
+        content: (m.content || '').slice(0, 1200)
+    }));
+    // Ensure latest user prompt present
+    if (!msgs.length || msgs[msgs.length - 1].role !== 'user') {
+        msgs.push({ role: 'user', content: userMessage });
+    }
+
+    let aiResponse = await callGemini(msgs, currentTheme);
+    if (!aiResponse) {
+        // Fallback to built-in heuristic if API failed
+        aiResponse = generateAIResponse(userMessage);
+    }
+
     const timestamp = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
     });
-    
-    const aiResponse = generateAIResponse(userMessage);
-    const quickReplies = generateQuickReplies(userMessage);
-    
-    // Convert newlines to HTML line breaks for AI responses too
-    const formattedAIResponse = aiResponse.replace(/\n/g, '<br>');
-    
+    const formattedAIResponse = (aiResponse || '').replace(/\n/g, '<br>');
     const aiMessage = document.createElement('div');
     aiMessage.className = 'flex items-start gap-4 message-slide-in';
-    
     aiMessage.innerHTML = `
         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg">
             <span class="material-icons text-2xl">psychology</span>
@@ -941,13 +1002,13 @@ const addAIResponse = (userMessage) => {
             </div>
         </div>
     `;
-    
     chatContainer.appendChild(aiMessage);
-    
+
+    // Quick replies (local heuristic)
+    const quickReplies = generateQuickReplies(userMessage);
     if (quickReplies.length > 0) {
         const quickReplyContainer = document.createElement('div');
         quickReplyContainer.className = 'quick-replies';
-        
         quickReplies.forEach(reply => {
             const button = document.createElement('button');
             button.className = 'quick-reply-btn';
@@ -955,10 +1016,8 @@ const addAIResponse = (userMessage) => {
             button.onclick = () => handleQuickReply(reply);
             quickReplyContainer.appendChild(button);
         });
-        
         chatContainer.appendChild(quickReplyContainer);
     }
-    
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
     // Persist AI response
@@ -979,12 +1038,23 @@ const initializeSearch = () => {
 // Keyboard shortcuts
 const initializeShortcuts = () => {
     document.addEventListener('keydown', (e) => {
+        // Do not trigger global shortcuts while the user is typing
+        // Use activeElement fallback to be robust across browsers
+        const el = document.activeElement || e.target;
+        const tag = el && el.tagName ? el.tagName.toLowerCase() : '';
+        const type = tag === 'input' ? (el.getAttribute && (el.getAttribute('type') || '').toLowerCase()) : '';
+        const nonTextInputTypes = ['button','submit','checkbox','radio','file','range','color','date','time','datetime-local','month','week','number'];
+        const isTextInput = tag === 'textarea' || (tag === 'input' && !nonTextInputTypes.includes(type));
+        const isTyping = isTextInput || (el && el.isContentEditable) || e.isComposing === true;
+
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'k') {
+            if (isTyping) return; // avoid hijacking when user is typing
             e.preventDefault();
             const search = document.getElementById('search-input');
             if (search) search.focus();
-        } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+            if (isTyping) return; // prevent starting new chat while typing
             e.preventDefault();
             const btn = document.getElementById('new-chat-btn');
             if (btn) btn.click();
