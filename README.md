@@ -54,9 +54,29 @@ A modern web chatbot for student mental wellness with per-theme chat sessions, s
 - **Session Continuity**: Maintains user preferences across browser sessions
 - **Progress Data**: Tracks conversation metrics and themes
 
+
 ## 🚀 Live Demo
 
-Visit the live application: [Mental Health Chatbot](https://subhankar-patra1.github.io/ChatBot-UI/)
+Visit the live chatbot here: [Mental Health Chatbot](https://chatbotformentalhealth.vercel.app)
+
+---
+
+## 🔗 Backend API
+
+The frontend connects to the Gemini-powered backend deployed at:
+
+https://mental-health-chatbot-opal-three.vercel.app
+
+You can change the backend API URL in `script.js` if needed.
+
+---
+
+## 🛠️ Deployment
+
+- Frontend: Deployed on Vercel at https://chatbotformentalhealth.vercel.app
+- Backend: Deployed on Vercel at https://mental-health-chatbot-opal-three.vercel.app
+
+See `script.js` for API connection details.
 
 Note: For AI responses on GitHub Pages, you must provide a publicly accessible HTTPS API endpoint via a query param `?api=...` (see Backend below). Otherwise, the app will fall back to a simple local heuristic.
 
