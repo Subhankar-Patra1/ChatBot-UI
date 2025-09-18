@@ -1008,10 +1008,10 @@ function getApiBase() {
         // 3) Default: localhost in dev
         const host = window.location.hostname;
         if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000';
-        // 4) No API configured in production (e.g., GitHub Pages). Return empty to trigger mock fallback.
-        return '';
+        // 4) Always use Vercel backend in production
+        return 'https://mental-health-chatbot-opal-three.vercel.app';
     } catch {
-        return '';
+        return 'https://mental-health-chatbot-opal-three.vercel.app';
     }
 }
 
