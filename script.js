@@ -1008,7 +1008,7 @@ function getApiBase() {
         // 3) Default: localhost in dev
         const host = window.location.hostname;
         if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000';
-        // 4) Always use Vercel backend in production
+        // 4) Always use your Vercel backend in production
         return 'https://mental-health-chatbot-opal-three.vercel.app';
     } catch {
         return 'https://mental-health-chatbot-opal-three.vercel.app';
